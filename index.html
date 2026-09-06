@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recipes — Control Panel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  /* ================= CONFIG =====================================
+     Fill these in once you have your Supabase project (Settings → API):
+  ================================================================= */
+  /* placeholders replaced below in <script id="config"> */
+
+  :root {
+    --bg: #0B1120;
+    --tile: #111827;
+    --tile-2: #161E2E;
+    --line: #1F2937;
+    --ink: #E5E9F0;
+    --ink-soft: #8B96A8;
+    --accent: #22D3EE;
+    --accent-ink: #04212A;
+    --danger: #F87171;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+
+  /* ---------- Auth screen ---------- */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--tile);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 30px 28px;
+  }
+  .auth-brand {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .auth-title { font-size: 20px; font-weight: 700; margin: 0 0 20px; }
+  .field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; font-family: "IBM Plex Mono", monospace; }
+  .field input {
+    background: var(--tile-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--ink);
+    font-size: 14px;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-weight: 700;
+    font-size: 13.5px;
+    margin-top: 6px;
+  }
+  .btn-primary:disabled { opacity: .55; cursor: default; }
+  .auth-switch { text-align: center; font-size: 12.5px; color: var(--ink-soft); margin-top: 16px; }
+  .auth-switch a { cursor: pointer; }
+  .auth-error {
+    background: rgba(248,113,113,.1);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 12.5px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    margin-bottom: 14px;
+  }
+  .auth-note { font-size: 11.5px; color: var(--ink-soft); margin-top: 18px; line-height: 1.6; text-align: center; }
+
+  /* ---------- App shell ---------- */
+  #app-screen { min-height: 100vh; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-size: 14px; font-weight: 700; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; }
+  .user-menu { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-soft); position: relative; }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .role-badge { font-size: 10px; font-family: "IBM Plex Mono", monospace; border-radius: 4px; padding: 2px 7px; }
+  .role-badge.admin { background: rgba(34,211,238,.15); color: var(--accent); }
+  .role-badge.member { background: rgba(139,150,168,.15); color: var(--ink-soft); }
+  .icon-btn {
+    background: none; border: 1px solid transparent; color: var(--ink-soft);
+    padding: 6px; border-radius: 7px; display: flex;
+  }
+  .icon-btn:hover { border-color: var(--line); color: var(--ink); }
+
+  main { padding: 22px 26px 60px; max-width: 1200px; margin: 0 auto; }
+
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
+  .tile { flex: 1; background: var(--tile); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; }
+  .tile .lbl { font-size: 10.5px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .tile .val { font-size: 21px; font-weight: 700; margin-top: 4px; font-family: "IBM Plex Mono", monospace; color: var(--accent); }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); }
+  #search {
+    width: 100%; background: var(--tile); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px 9px 32px; color: var(--ink); font-size: 13px; outline: none;
+  }
+  #search:focus { border-color: var(--accent); }
+  select.cat-select {
+    background: var(--tile); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 10px; color: var(--ink); font-size: 12.5px; outline: none;
+  }
+  .addbtn {
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
+    padding: 9px 15px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; font-size: 10.5px; color: var(--ink-soft); font-weight: 500;
+    padding: 8px 6px; border-bottom: 1px solid var(--line);
+    font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .04em;
+  }
+  tbody td { padding: 11px 6px; border-bottom: 1px solid var(--tile-2); vertical-align: top; }
+  tbody tr:hover { background: rgba(255,255,255,.015); }
+  .r-name { font-weight: 600; }
+  .r-cat { font-size: 11px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; }
+  .row-actions { display: flex; gap: 10px; justify-content: flex-end; color: var(--ink-soft); }
+  .row-actions button { background: none; border: none; color: inherit; padding: 3px; }
+  .row-actions button:hover { color: var(--accent); }
+  .row-actions button.del:hover { color: var(--danger); }
+  .empty { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+
+  .card-detail { display: none; }
+  tr.expanded .card-detail { display: table-row; }
+  .detail-inner { padding: 4px 6px 18px; }
+  .detail-grid { display: grid; grid-template-columns: minmax(0,220px) minmax(0,1fr); gap: 22px; }
+  .block-label { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; font-family: "IBM Plex Mono", monospace; margin: 0 0 6px; }
+  .ingredients { margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+  .ingredients li { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+  .method-text { font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; margin: 0; color: var(--ink); }
+
+  /* ---------- Modal (add recipe / settings) ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--tile); border: 1px solid var(--line); border-radius: 14px;
+    width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; padding: 22px 22px 20px;
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-header h2 { font-size: 17px; font-weight: 700; margin: 0; }
+  .modal-close { background: none; border: none; color: var(--ink-soft); font-size: 20px; cursor: pointer; }
+  .form-field { margin-bottom: 13px; display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 10.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; font-family: "IBM Plex Mono", monospace; }
+  .form-field input, .form-field select, .form-field textarea {
+    background: var(--tile-2); border: 1px solid var(--line); border-radius: 7px;
+    padding: 8px 10px; color: var(--ink); font-size: 13.5px; outline: none; resize: vertical;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--accent); }
+  .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+  .btn-secondary {
+    background: none; border: 1px solid var(--line); color: var(--ink-soft);
+    border-radius: 8px; padding: 9px 15px; font-size: 13px; font-weight: 600;
+  }
+  .btn-inline-primary {
+    background: var(--accent); color: var(--accent-ink); border: none;
+    border-radius: 8px; padding: 9px 15px; font-size: 13px; font-weight: 700;
+  }
+  .btn-inline-primary:disabled { opacity: .55; }
+  .form-error { background: rgba(248,113,113,.1); border: 1px solid var(--danger); color: var(--danger); font-size: 12px; padding: 8px 10px; border-radius: 7px; margin-bottom: 10px; }
+
+  .settings-section { margin-bottom: 20px; }
+  .settings-section h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; margin: 0 0 10px; }
+  .link-box { display: flex; gap: 8px; }
+  .link-box input { flex: 1; background: var(--tile-2); border: 1px solid var(--line); border-radius: 7px; padding: 9px 10px; color: var(--ink-soft); font-size: 12px; font-family: "IBM Plex Mono", monospace; }
+  .copy-btn { background: var(--accent); color: var(--accent-ink); border: none; border-radius: 7px; padding: 0 14px; font-size: 12px; font-weight: 700; }
+  .members-list { display: flex; flex-direction: column; gap: 6px; }
+  .member-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; padding: 7px 0; border-bottom: 1px solid var(--tile-2); }
+</style>
+</head>
+<body>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">ΣΥΝΤΑΓΕΣ · CONTROL PANEL</div>
+    <h1 class="auth-title" id="auth-title">Σύνδεση</h1>
+    <div class="auth-error" id="auth-error" hidden></div>
+    <form id="auth-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="auth-email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Κωδικός</label>
+        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+      </div>
+      <button type="submit" class="btn-primary" id="auth-submit">Σύνδεση</button>
+    </form>
+    <div class="auth-switch">
+      <span id="switch-to-signup-wrap">Δεν έχεις λογαριασμό; <a id="switch-to-signup">Εγγραφή</a></span>
+      <span id="switch-to-login-wrap" hidden>Έχεις ήδη λογαριασμό; <a id="switch-to-login">Σύνδεση</a></span>
+    </div>
+    <div class="auth-note">Ιδιωτική εφαρμογή της ομάδας — χρειάζεται λογαριασμό για είσοδο.</div>
+  </div>
+</div>
+
+<!-- ==================== APP SCREEN ==================== -->
+<div id="app-screen" hidden>
+  <div class="topbar">
+    <div class="brand">ΣΥΝΤΑΓΕΣ &middot; Control panel</div>
+    <div class="user-menu">
+      <div class="avatar" id="user-avatar">?</div>
+      <span id="user-email"></span>
+      <span class="role-badge" id="role-badge"></span>
+      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="icon-btn" id="logout-btn" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <div class="stats" id="admin-stats" hidden>
+      <div class="tile"><div class="lbl">Σύνολο συνταγών</div><div class="val" id="stat-total">—</div></div>
+      <div class="tile"><div class="lbl">Μέλη ομάδας</div><div class="val" id="stat-members">—</div></div>
+      <div class="tile"><div class="lbl">Προστέθηκαν (7d)</div><div class="val" id="stat-recent">—</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" type="text" placeholder="Αναζήτηση συνταγής&hellip;" autocomplete="off">
+      </div>
+      <select class="cat-select" id="cat-select">
+        <option value="">Όλες οι κατηγορίες</option>
+      </select>
+      <button class="addbtn" id="add-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Νέα συνταγή
+      </button>
+    </div>
+
+    <table>
+      <thead><tr><th>Όνομα</th><th>Κατηγορία</th><th></th></tr></thead>
+      <tbody id="recipe-list"></tbody>
+    </table>
+    <div class="empty" id="empty-state" hidden>Καμία συνταγή δεν βρέθηκε.</div>
+  </main>
+</div>
+
+<!-- ==================== ADD/EDIT RECIPE MODAL ==================== -->
+<div class="modal-overlay" id="recipe-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="recipe-modal-title">Νέα συνταγή</h2>
+      <button class="modal-close" id="recipe-modal-close">&times;</button>
+    </div>
+    <div class="form-error" id="recipe-form-error" hidden></div>
+    <form id="recipe-form">
+      <div class="form-field"><label>Όνομα</label><input type="text" id="f-name" required maxlength="200"></div>
+      <div class="form-field"><label>Κατηγορία</label><select id="f-category"></select></div>
+      <div class="form-field"><label>Υλικά (ένα ανά γραμμή)</label><textarea id="f-ingredients" rows="5"></textarea></div>
+      <div class="form-field"><label>Μέθοδος</label><textarea id="f-method" rows="4"></textarea></div>
+      <div class="form-field"><label>Μερίδες / απόδοση</label><input type="text" id="f-yield"></div>
+      <div class="form-field"><label>Σημειώσεις</label><textarea id="f-notes" rows="2"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" id="recipe-cancel">Άκυρο</button>
+        <button type="submit" class="btn-inline-primary" id="recipe-submit">Αποθήκευση</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== SETTINGS MODAL ==================== -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="modal-close" id="settings-modal-close">&times;</button>
+    </div>
+    <div class="settings-section">
+      <h3>Link για την ομάδα</h3>
+      <div class="link-box">
+        <input type="text" id="share-link" readonly>
+        <button class="copy-btn" id="copy-link-btn">Copy</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>Ο λογαριασμός σου</h3>
+      <div style="font-size:13px;" id="settings-account-info"></div>
+    </div>
+    <div class="settings-section" id="settings-members-section" hidden>
+      <h3>Μέλη ομάδας</h3>
+      <div class="members-list" id="members-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG — fill these in once your Supabase project exists
+   (Project → Settings → API → "Project URL" and "anon public" key).
+   Both are safe to leave visible in this file — that is how Supabase
+   is designed to work; real access control lives in the database
+   policies (setup.sql), not in hiding this key.
+   ===================================================================== */
+const SUPABASE_URL = "https://xdzatpviwgcqpqruetfy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Ke6lM9Vn8rbpWOCRNjnJvw_ctxUe_rA";
+
+const CATEGORY_ORDER = [
+  "Starters", "Salads", "Soups", "Mains - Meat", "Mains - Fish & Seafood",
+  "Mains - Poultry", "Pasta & Rice", "Sauces & Dressings", "Sides & Vegetables",
+  "Bread & Dough", "Pastries & Sweets", "Desserts", "Breakfast",
+  "Cocktails & Beverages", "Reference", "Other"
+];
+
+let sb = null;
+let configured = SUPABASE_URL.indexOf("YOUR_") !== 0 && SUPABASE_ANON_KEY.indexOf("YOUR_") !== 0;
+if (configured) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  document.addEventListener('DOMContentLoaded', function () {
+    var err = document.getElementById('auth-error');
+    err.hidden = false;
+    err.textContent = 'Η εφαρμογή δεν έχει ρυθμιστεί ακόμα (λείπουν τα Supabase URL/key μέσα στο index.html).';
+    document.getElementById('auth-submit').disabled = true;
+  });
+}
+
+let currentUser = null;
+let currentProfile = null;
+let allRecipes = [];
+let editingId = null;
+
+/* ---------- Auth screen wiring ---------- */
+let mode = 'login'; // 'login' | 'signup'
+const authTitle = document.getElementById('auth-title');
+const authForm = document.getElementById('auth-form');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authSubmit = document.getElementById('auth-submit');
+const authError = document.getElementById('auth-error');
+
+document.getElementById('switch-to-signup').addEventListener('click', function () {
+  mode = 'signup';
+  authTitle.textContent = 'Εγγραφή';
+  authSubmit.textContent = 'Δημιουργία λογαριασμού';
+  document.getElementById('switch-to-signup-wrap').hidden = true;
+  document.getElementById('switch-to-login-wrap').hidden = false;
+});
+document.getElementById('switch-to-login').addEventListener('click', function () {
+  mode = 'login';
+  authTitle.textContent = 'Σύνδεση';
+  authSubmit.textContent = 'Σύνδεση';
+  document.getElementById('switch-to-signup-wrap').hidden = false;
+  document.getElementById('switch-to-login-wrap').hidden = true;
+});
+
+authForm.addEventListener('submit', async function (e) {
+  e.preventDefault();
+  if (!configured) return;
+  authError.hidden = true;
+  authSubmit.disabled = true;
+  var email = authEmail.value.trim();
+  var password = authPassword.value;
+  try {
+    var result = mode === 'signup'
+      ? await sb.auth.signUp({ email: email, password: password })
+      : await sb.auth.signInWithPassword({ email: email, password: password });
+    if (result.error) throw result.error;
+    if (mode === 'signup' && result.data && !result.data.session) {
+      authError.hidden = false;
+      authError.textContent = 'Ο λογαριασμός δημιουργήθηκε. Έλεγξε το email σου για επιβεβαίωση, μετά συνδέσου.';
+      authSubmit.disabled = false;
+      return;
+    }
+    // onAuthStateChange below handles the rest
+  } catch (err) {
+    authError.hidden = false;
+    authError.textContent = err.message || 'Κάτι πήγε στραβά.';
+    authSubmit.disabled = false;
+  }
+});
+
+/* ---------- App shell wiring ---------- */
+const authScreen = document.getElementById('auth-screen');
+const appScreen = document.getElementById('app-screen');
+
+async function loadProfile(userId) {
+  var res = await sb.from('profiles').select('*').eq('id', userId).single();
+  return res.data;
+}
+
+async function enterApp() {
+  authScreen.hidden = true;
+  appScreen.hidden = false;
+  document.getElementById('user-email').textContent = currentUser.email;
+  document.getElementById('user-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  var badge = document.getElementById('role-badge');
+  var isAdmin = currentProfile && currentProfile.role === 'admin';
+  badge.textContent = isAdmin ? 'admin' : 'member';
+  badge.className = 'role-badge ' + (isAdmin ? 'admin' : 'member');
+  document.getElementById('admin-stats').hidden = !isAdmin;
+
+  var catSel = document.getElementById('cat-select');
+  catSel.innerHTML = '<option value="">Όλες οι κατηγορίες</option>' +
+    CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  var fCat = document.getElementById('f-category');
+  fCat.innerHTML = CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+
+  await refreshRecipes();
+  if (isAdmin) await refreshAdminStats();
+}
+
+async function refreshRecipes() {
+  var res = await sb.from('recipes').select('*').order('recipe_name');
+  allRecipes = res.data || [];
+  renderList();
+}
+
+async function refreshAdminStats() {
+  document.getElementById('stat-total').textContent = allRecipes.length;
+  var membersRes = await sb.from('profiles').select('id', { count: 'exact', head: true });
+  document.getElementById('stat-members').textContent = membersRes.count != null ? membersRes.count : '—';
+  var weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  var recentCount = allRecipes.filter(function (r) { return r.created_at && r.created_at > weekAgo; }).length;
+  document.getElementById('stat-recent').textContent = recentCount;
+}
+
+function renderList() {
+  var q = document.getElementById('search').value.trim().toLowerCase();
+  var cat = document.getElementById('cat-select').value;
+  var isAdmin = currentProfile && currentProfile.role === 'admin';
+  var filtered = allRecipes.filter(function (r) {
+    if (cat && r.category !== cat) return false;
+    if (q && r.recipe_name.toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  var listEl = document.getElementById('recipe-list');
+  document.getElementById('empty-state').hidden = filtered.length > 0;
+  listEl.innerHTML = filtered.map(function (r) {
+    var ingredients = (r.ingredients || []).map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('');
+    var delBtn = isAdmin ? '<button class="del" data-action="delete" data-id="' + r.id + '" title="Delete"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>' : '';
+    var editBtn = isAdmin ? '<button data-action="edit" data-id="' + r.id + '" title="Edit"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '';
+    return '<tr data-row-id="' + r.id + '">' +
+      '<td><div class="r-name">' + escapeHtml(r.recipe_name) + '</div></td>' +
+      '<td class="r-cat">' + escapeHtml(r.category) + '</td>' +
+      '<td><div class="row-actions"><button data-action="toggle" data-id="' + r.id + '" title="Άνοιγμα"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>' + editBtn + delBtn + '</div></td>' +
+      '</tr>' +
+      '<tr class="card-detail" data-detail-id="' + r.id + '"><td colspan="3"><div class="detail-inner"><div class="detail-grid">' +
+      '<div><div class="block-label">Υλικά</div><ul class="ingredients">' + (ingredients || '<li style="color:var(--ink-soft)">—</li>') + '</ul></div>' +
+      '<div><div class="block-label">Μέθοδος</div><p class="method-text">' + escapeHtml(r.method || '—') + '</p></div>' +
+      '</div></div></td></tr>';
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+document.getElementById('search').addEventListener('input', renderList);
+document.getElementById('cat-select').addEventListener('change', renderList);
+
+document.getElementById('recipe-list').addEventListener('click', async function (e) {
+  var btn = e.target.closest('button');
+  if (!btn) return;
+  var action = btn.getAttribute('data-action');
+  var id = btn.getAttribute('data-id');
+  if (action === 'toggle') {
+    var row = listRowFor(id);
+    row.classList.toggle('expanded');
+  } else if (action === 'edit') {
+    openRecipeModal(allRecipes.find(function (r) { return r.id === id; }));
+  } else if (action === 'delete') {
+    if (!confirm('Διαγραφή αυτής της συνταγής;')) return;
+    var res = await sb.from('recipes').delete().eq('id', id);
+    if (!res.error) { await refreshRecipes(); }
+    else alert('Αποτυχία διαγραφής: ' + res.error.message);
+  }
+});
+function listRowFor(id) {
+  return document.querySelector('tr[data-row-id="' + id + '"]').nextElementSibling;
+}
+
+/* ---------- Add/edit recipe modal ---------- */
+const recipeModal = document.getElementById('recipe-modal');
+document.getElementById('add-btn').addEventListener('click', function () { openRecipeModal(null); });
+document.getElementById('recipe-modal-close').addEventListener('click', closeRecipeModal);
+document.getElementById('recipe-cancel').addEventListener('click', closeRecipeModal);
+recipeModal.addEventListener('click', function (e) { if (e.target === recipeModal) closeRecipeModal(); });
+
+function openRecipeModal(r) {
+  editingId = r ? r.id : null;
+  document.getElementById('recipe-modal-title').textContent = editingId ? 'Επεξεργασία συνταγής' : 'Νέα συνταγή';
+  document.getElementById('recipe-submit').textContent = editingId ? 'Αποθήκευση αλλαγών' : 'Αποθήκευση';
+  document.getElementById('recipe-form-error').hidden = true;
+  document.getElementById('f-name').value = r ? r.recipe_name : '';
+  document.getElementById('f-category').value = r ? r.category : CATEGORY_ORDER[0];
+  document.getElementById('f-ingredients').value = r && r.ingredients ? r.ingredients.join('\n') : '';
+  document.getElementById('f-method').value = r ? r.method : '';
+  document.getElementById('f-yield').value = r ? r.yield_or_portions : '';
+  document.getElementById('f-notes').value = r ? r.notes : '';
+  recipeModal.classList.add('visible');
+}
+function closeRecipeModal() {
+  recipeModal.classList.remove('visible');
+  document.getElementById('recipe-form').reset();
+  editingId = null;
+}
+
+document.getElementById('recipe-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var name = document.getElementById('f-name').value.trim();
+  if (!name) return;
+  var submitBtn = document.getElementById('recipe-submit');
+  submitBtn.disabled = true;
+  var payload = {
+    recipe_name: name,
+    category: document.getElementById('f-category').value,
+    ingredients: document.getElementById('f-ingredients').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+    method: document.getElementById('f-method').value.trim(),
+    yield_or_portions: document.getElementById('f-yield').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    updated_at: new Date().toISOString()
+  };
+  var res;
+  if (editingId) {
+    res = await sb.from('recipes').update(payload).eq('id', editingId);
+  } else {
+    payload.added_by = currentUser.id;
+    res = await sb.from('recipes').insert(payload);
+  }
+  submitBtn.disabled = false;
+  if (res.error) {
+    var errEl = document.getElementById('recipe-form-error');
+    errEl.hidden = false;
+    errEl.textContent = res.error.message;
+    return;
+  }
+  closeRecipeModal();
+  await refreshRecipes();
+});
+
+/* ---------- Settings modal ---------- */
+const settingsModal = document.getElementById('settings-modal');
+document.getElementById('settings-btn').addEventListener('click', async function () {
+  document.getElementById('share-link').value = window.location.href;
+  var isAdmin = currentProfile && currentProfile.role === 'admin';
+  document.getElementById('settings-account-info').innerHTML =
+    '<div>' + escapeHtml(currentUser.email) + '</div><div style="color:var(--ink-soft);margin-top:2px;">' + (isAdmin ? 'Admin — πλήρης πρόσβαση' : 'Μέλος — μπορείς να προσθέτεις συνταγές') + '</div>';
+  var membersSection = document.getElementById('settings-members-section');
+  membersSection.hidden = !isAdmin;
+  if (isAdmin) {
+    var res = await sb.from('profiles').select('email, role, created_at').order('created_at');
+    document.getElementById('members-list').innerHTML = (res.data || []).map(function (m) {
+      return '<div class="member-row"><span>' + escapeHtml(m.email) + '</span><span class="role-badge ' + m.role + '">' + m.role + '</span></div>';
+    }).join('');
+  }
+  settingsModal.classList.add('visible');
+});
+document.getElementById('settings-modal-close').addEventListener('click', function () { settingsModal.classList.remove('visible'); });
+settingsModal.addEventListener('click', function (e) { if (e.target === settingsModal) settingsModal.classList.remove('visible'); });
+document.getElementById('copy-link-btn').addEventListener('click', function () {
+  var input = document.getElementById('share-link');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(function () {
+    var btn = document.getElementById('copy-link-btn');
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function () { btn.textContent = orig; }, 1500);
+  });
+});
+
+/* ---------- Logout ---------- */
+document.getElementById('logout-btn').addEventListener('click', async function () {
+  await sb.auth.signOut();
+});
+
+/* ---------- Auth state / boot ---------- */
+if (configured) {
+  sb.auth.onAuthStateChange(async function (event, session) {
+    if (session && session.user) {
+      currentUser = session.user;
+      currentProfile = await loadProfile(currentUser.id);
+      await enterApp();
+    } else {
+      currentUser = null;
+      currentProfile = null;
+      authScreen.hidden = false;
+      appScreen.hidden = true;
+    }
+  });
+}
+</script>
+</body>
+</html>
