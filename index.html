@@ -399,6 +399,13 @@
       Πίσω
     </button>
     <div style="display:flex;gap:8px;align-items:center;">
+      <select id="rv-translate-select" class="cat-select" style="font-size:11.5px;padding:7px 8px;">
+        <option value="">Αρχικό κείμενο</option>
+        <option value="el">Μετάφραση: Ελληνικά</option>
+        <option value="en">Μετάφραση: Αγγλικά</option>
+        <option value="it">Μετάφραση: Ιταλικά</option>
+        <option value="fr">Μετάφραση: Γαλλικά</option>
+      </select>
       <button id="rv-fav-btn" class="fav-star-btn" title="Αγαπημένα">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
@@ -409,6 +416,7 @@
     <div class="rv-cat" id="rv-cat"></div>
     <h1 id="rv-name"></h1>
     <div class="rv-yield" id="rv-yield"></div>
+    <div id="rv-translate-status" hidden style="font-size:11.5px;color:var(--ink-soft);margin:-16px 0 20px;"></div>
     <div class="rv-section">
       <div class="block-label">Υλικά</div>
       <ul class="ingredients" id="rv-ingredients"></ul>
@@ -793,29 +801,75 @@ document.getElementById('recipe-list').addEventListener('click', async function 
 
 /* ---------- Full-screen recipe view ---------- */
 var recipeViewScreen = document.getElementById('recipe-view-screen');
+var rvOriginal = null;
 function openRecipeView(r) {
   if (!r) return;
   currentViewedRecipe = r;
-  document.getElementById('rv-cat').textContent = r.category || '';
-  document.getElementById('rv-name').textContent = r.recipe_name;
+  rvOriginal = {
+    name: r.recipe_name,
+    ingredients: (r.ingredients || []).slice(),
+    method: r.method || '',
+    notes: r.notes || ''
+  };
+  document.getElementById('rv-translate-select').value = '';
+  document.getElementById('rv-translate-status').hidden = true;
   var yieldEl = document.getElementById('rv-yield');
   yieldEl.textContent = r.yield_or_portions || '';
   yieldEl.hidden = !r.yield_or_portions;
-  document.getElementById('rv-ingredients').innerHTML =
-    (r.ingredients && r.ingredients.length ? r.ingredients.map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') : '<li style="color:var(--ink-soft)">—</li>');
-  document.getElementById('rv-method').textContent = r.method || '—';
-  var notesSection = document.getElementById('rv-notes-section');
-  if (r.notes) {
-    notesSection.hidden = false;
-    document.getElementById('rv-notes').textContent = r.notes;
-  } else {
-    notesSection.hidden = true;
-  }
+  document.getElementById('rv-cat').textContent = r.category || '';
+  renderRvContent(rvOriginal);
   updateRvFavButton();
   recipeViewScreen.hidden = false;
   recipeViewScreen.scrollTop = 0;
   document.body.style.overflow = 'hidden';
 }
+function renderRvContent(data) {
+  document.getElementById('rv-name').textContent = data.name;
+  document.getElementById('rv-ingredients').innerHTML =
+    (data.ingredients && data.ingredients.length ? data.ingredients.map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') : '<li style="color:var(--ink-soft)">—</li>');
+  document.getElementById('rv-method').textContent = data.method || '—';
+  var notesSection = document.getElementById('rv-notes-section');
+  if (data.notes) {
+    notesSection.hidden = false;
+    document.getElementById('rv-notes').textContent = data.notes;
+  } else {
+    notesSection.hidden = true;
+  }
+}
+
+/* ---------- Translate ---------- */
+async function translateText(text, targetLang) {
+  if (!text || !text.trim()) return text;
+  var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + targetLang + '&dt=t&q=' + encodeURIComponent(text);
+  var res = await fetch(url);
+  if (!res.ok) throw new Error('translate failed');
+  var data = await res.json();
+  return data[0].map(function (seg) { return seg[0]; }).join('');
+}
+document.getElementById('rv-translate-select').addEventListener('change', async function () {
+  var target = this.value;
+  var statusEl = document.getElementById('rv-translate-status');
+  if (!target) {
+    statusEl.hidden = true;
+    renderRvContent(rvOriginal);
+    return;
+  }
+  this.disabled = true;
+  statusEl.hidden = false;
+  statusEl.textContent = 'Μετάφραση...';
+  try {
+    var translatedName = await translateText(rvOriginal.name, target);
+    var translatedMethod = await translateText(rvOriginal.method, target);
+    var translatedNotes = rvOriginal.notes ? await translateText(rvOriginal.notes, target) : '';
+    var translatedIngredients = await Promise.all(rvOriginal.ingredients.map(function (i) { return translateText(i, target); }));
+    renderRvContent({ name: translatedName, ingredients: translatedIngredients, method: translatedMethod, notes: translatedNotes });
+    statusEl.textContent = 'Αυτόματη μετάφραση — μπορεί να μην είναι 100% ακριβής. Διάλεξε "Αρχικό κείμενο" για επιστροφή.';
+  } catch (err) {
+    statusEl.textContent = 'Η μετάφραση απέτυχε (πρόβλημα σύνδεσης) — δοκίμασε ξανά.';
+    this.value = '';
+  }
+  this.disabled = false;
+});
 function updateRvFavButton() {
   var btn = document.getElementById('rv-fav-btn');
   var isFav = currentViewedRecipe && favoriteIds.has(currentViewedRecipe.id);
