@@ -164,15 +164,34 @@
   .row-actions button:hover { color: var(--accent); }
   .row-actions button.del:hover { color: var(--danger); }
   .empty { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+  .recipe-row { cursor: pointer; }
 
-  .card-detail { display: none; }
-  .card-detail.expanded { display: table-row; }
-  .detail-inner { padding: 4px 6px 18px; }
-  .detail-grid { display: grid; grid-template-columns: minmax(0,220px) minmax(0,1fr); gap: 22px; }
   .block-label { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; font-family: "IBM Plex Mono", monospace; margin: 0 0 6px; }
   .ingredients { margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
   .ingredients li { padding: 3px 0; border-bottom: 1px dashed var(--line); }
   .method-text { font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; margin: 0; color: var(--ink); }
+
+  /* ---------- Recipe detail (full screen) ---------- */
+  #recipe-view-screen {
+    position: fixed; inset: 0; background: var(--bg); z-index: 300; overflow-y: auto;
+  }
+  .rv-topbar {
+    position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: 14px 20px; z-index: 2;
+  }
+  .rv-back-btn {
+    background: none; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .rv-back-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rv-body { max-width: 760px; margin: 0 auto; padding: 30px 24px 90px; }
+  .rv-cat { font-size: 11px; color: var(--accent); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  #rv-name { font-size: 25px; font-weight: 700; margin: 0 0 6px; line-height: 1.25; }
+  .rv-yield { font-size: 13px; color: var(--ink-soft); margin-bottom: 26px; }
+  .rv-section { margin-bottom: 28px; }
+  .rv-section .ingredients { font-size: 14px; }
+  .rv-section .method-text { font-size: 14.5px; }
 
   /* ---------- Modal (add recipe / settings) ---------- */
   .modal-overlay {
@@ -309,6 +328,33 @@
     </table>
     <div class="empty" id="empty-state" hidden>Καμία συνταγή δεν βρέθηκε.</div>
   </main>
+</div>
+
+<!-- ==================== RECIPE DETAIL (full screen) ==================== -->
+<div id="recipe-view-screen" hidden>
+  <div class="rv-topbar">
+    <button id="rv-back" class="rv-back-btn">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Πίσω
+    </button>
+  </div>
+  <div class="rv-body">
+    <div class="rv-cat" id="rv-cat"></div>
+    <h1 id="rv-name"></h1>
+    <div class="rv-yield" id="rv-yield"></div>
+    <div class="rv-section">
+      <div class="block-label">Υλικά</div>
+      <ul class="ingredients" id="rv-ingredients"></ul>
+    </div>
+    <div class="rv-section">
+      <div class="block-label">Μέθοδος</div>
+      <p class="method-text" id="rv-method"></p>
+    </div>
+    <div class="rv-section" id="rv-notes-section" hidden>
+      <div class="block-label">Σημειώσεις</div>
+      <p class="method-text" id="rv-notes"></p>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== BACK TO TOP ==================== -->
@@ -507,18 +553,13 @@ function renderList() {
   var listEl = document.getElementById('recipe-list');
   document.getElementById('empty-state').hidden = filtered.length > 0;
   listEl.innerHTML = filtered.map(function (r) {
-    var ingredients = (r.ingredients || []).map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('');
     var delBtn = isAdmin ? '<button class="del" data-action="delete" data-id="' + r.id + '" title="Delete"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>' : '';
     var editBtn = isAdmin ? '<button data-action="edit" data-id="' + r.id + '" title="Edit"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '';
-    return '<tr data-row-id="' + r.id + '">' +
+    return '<tr data-row-id="' + r.id + '" class="recipe-row">' +
       '<td><div class="r-name">' + escapeHtml(r.recipe_name) + '</div></td>' +
       '<td class="r-cat">' + escapeHtml(r.category) + '</td>' +
-      '<td><div class="row-actions"><button data-action="toggle" data-id="' + r.id + '" title="Άνοιγμα"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>' + editBtn + delBtn + '</div></td>' +
-      '</tr>' +
-      '<tr class="card-detail" data-detail-id="' + r.id + '"><td colspan="3"><div class="detail-inner"><div class="detail-grid">' +
-      '<div><div class="block-label">Υλικά</div><ul class="ingredients">' + (ingredients || '<li style="color:var(--ink-soft)">—</li>') + '</ul></div>' +
-      '<div><div class="block-label">Μέθοδος</div><p class="method-text">' + escapeHtml(r.method || '—') + '</p></div>' +
-      '</div></div></td></tr>';
+      '<td><div class="row-actions"><button data-action="view" data-id="' + r.id + '" title="Άνοιγμα"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>' + editBtn + delBtn + '</div></td>' +
+      '</tr>';
   }).join('');
 }
 
@@ -530,25 +571,54 @@ document.getElementById('search').addEventListener('input', renderList);
 document.getElementById('cat-select').addEventListener('change', renderList);
 
 document.getElementById('recipe-list').addEventListener('click', async function (e) {
-  var btn = e.target.closest('button');
-  if (!btn) return;
-  var action = btn.getAttribute('data-action');
-  var id = btn.getAttribute('data-id');
-  if (action === 'toggle') {
-    var row = listRowFor(id);
-    row.classList.toggle('expanded');
-  } else if (action === 'edit') {
-    openRecipeModal(allRecipes.find(function (r) { return r.id === id; }));
-  } else if (action === 'delete') {
+  var delBtn = e.target.closest('button[data-action="delete"]');
+  if (delBtn) {
+    var delId = delBtn.getAttribute('data-id');
     if (!confirm('Διαγραφή αυτής της συνταγής;')) return;
-    var res = await sb.from('recipes').delete().eq('id', id);
+    var res = await sb.from('recipes').delete().eq('id', delId);
     if (!res.error) { await refreshRecipes(); }
     else alert('Αποτυχία διαγραφής: ' + res.error.message);
+    return;
+  }
+  var editBtn = e.target.closest('button[data-action="edit"]');
+  if (editBtn) {
+    openRecipeModal(allRecipes.find(function (r) { return r.id === editBtn.getAttribute('data-id'); }));
+    return;
+  }
+  var row = e.target.closest('tr[data-row-id]');
+  if (row) {
+    openRecipeView(allRecipes.find(function (r) { return r.id === row.getAttribute('data-row-id'); }));
   }
 });
-function listRowFor(id) {
-  return document.querySelector('tr[data-row-id="' + id + '"]').nextElementSibling;
+
+/* ---------- Full-screen recipe view ---------- */
+var recipeViewScreen = document.getElementById('recipe-view-screen');
+function openRecipeView(r) {
+  if (!r) return;
+  document.getElementById('rv-cat').textContent = r.category || '';
+  document.getElementById('rv-name').textContent = r.recipe_name;
+  var yieldEl = document.getElementById('rv-yield');
+  yieldEl.textContent = r.yield_or_portions || '';
+  yieldEl.hidden = !r.yield_or_portions;
+  document.getElementById('rv-ingredients').innerHTML =
+    (r.ingredients && r.ingredients.length ? r.ingredients.map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') : '<li style="color:var(--ink-soft)">—</li>');
+  document.getElementById('rv-method').textContent = r.method || '—';
+  var notesSection = document.getElementById('rv-notes-section');
+  if (r.notes) {
+    notesSection.hidden = false;
+    document.getElementById('rv-notes').textContent = r.notes;
+  } else {
+    notesSection.hidden = true;
+  }
+  recipeViewScreen.hidden = false;
+  recipeViewScreen.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
 }
+function closeRecipeView() {
+  recipeViewScreen.hidden = true;
+  document.body.style.overflow = '';
+}
+document.getElementById('rv-back').addEventListener('click', closeRecipeView);
 
 /* ---------- Add/edit recipe modal ---------- */
 const recipeModal = document.getElementById('recipe-modal');
