@@ -213,6 +213,29 @@
   .copy-btn { background: var(--accent); color: var(--accent-ink); border: none; border-radius: 7px; padding: 0 14px; font-size: 12px; font-weight: 700; }
   .members-list { display: flex; flex-direction: column; gap: 6px; }
   .member-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; padding: 7px 0; border-bottom: 1px solid var(--tile-2); }
+
+  /* ---------- Back to top ---------- */
+  #back-to-top {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    z-index: 200;
+  }
+  #back-to-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -287,6 +310,11 @@
     <div class="empty" id="empty-state" hidden>Καμία συνταγή δεν βρέθηκε.</div>
   </main>
 </div>
+
+<!-- ==================== BACK TO TOP ==================== -->
+<button id="back-to-top" title="Επιστροφή στην αρχή" aria-label="Επιστροφή στην αρχή">
+  <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
 
 <!-- ==================== ADD/EDIT RECIPE MODAL ==================== -->
 <div class="modal-overlay" id="recipe-modal">
@@ -609,6 +637,16 @@ document.getElementById('copy-link-btn').addEventListener('click', function () {
     btn.textContent = 'Copied!';
     setTimeout(function () { btn.textContent = orig; }, 1500);
   });
+});
+
+/* ---------- Back to top ---------- */
+var backToTopBtn = document.getElementById('back-to-top');
+window.addEventListener('scroll', function () {
+  if (window.scrollY > 260) backToTopBtn.classList.add('visible');
+  else backToTopBtn.classList.remove('visible');
+});
+backToTopBtn.addEventListener('click', function () {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 /* ---------- Logout ---------- */
