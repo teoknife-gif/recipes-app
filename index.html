@@ -260,6 +260,39 @@
     z-index: 200;
   }
   #back-to-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+  /* ---------- Avatars ---------- */
+  .avatar-upload-row { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+
+  /* ---------- Chat ---------- */
+  #chat-screen { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; flex-direction: column; }
+  .chat-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+  }
+  .chat-online { font-size: 11.5px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; }
+  .chat-online .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34D399; margin-right: 5px; }
+  .chat-body { flex: 1; overflow-y: auto; padding: 18px 20px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .chat-msg { display: flex; gap: 10px; margin-bottom: 16px; }
+  .chat-msg.own { flex-direction: row-reverse; }
+  .chat-msg-body { max-width: 78%; }
+  .chat-msg.own .chat-msg-body { text-align: right; }
+  .chat-msg-meta { font-size: 10.5px; color: var(--ink-soft); margin-bottom: 3px; font-family: "IBM Plex Mono", monospace; }
+  .chat-bubble {
+    display: inline-block; background: var(--tile); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 12px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; text-align: left;
+  }
+  .chat-msg.own .chat-bubble { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .chat-input-row {
+    display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line);
+    max-width: 760px; width: 100%; margin: 0 auto; flex-shrink: 0; box-sizing: border-box;
+  }
+  .chat-input-row textarea {
+    flex: 1; background: var(--tile); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; color: var(--ink); font-size: 13.5px; outline: none; resize: none; font-family: inherit;
+  }
+  .chat-input-row textarea:focus { border-color: var(--accent); }
+  .chat-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 40px 20px; }
 </style>
 </head>
 <body>
@@ -294,9 +327,12 @@
   <div class="topbar">
     <div class="brand">ΣΥΝΤΑΓΕΣ &middot; Control panel</div>
     <div class="user-menu">
-      <div class="avatar" id="user-avatar">?</div>
+      <span id="user-avatar"></span>
       <span id="user-email"></span>
       <span class="role-badge" id="role-badge"></span>
+      <button class="icon-btn" id="chat-btn" title="Chat ομάδας" aria-label="Chat ομάδας">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </button>
       <button class="icon-btn" id="report-btn" title="Αναφορά προβλήματος" aria-label="Αναφορά προβλήματος">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
       </button>
@@ -370,6 +406,24 @@
   </div>
 </div>
 
+<!-- ==================== CHAT (full screen) ==================== -->
+<div id="chat-screen" hidden>
+  <div class="chat-topbar">
+    <button id="chat-back" class="rv-back-btn">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Πίσω
+    </button>
+    <div class="chat-online" id="chat-online-count"></div>
+  </div>
+  <div class="chat-body" id="chat-body">
+    <div class="chat-empty">Φόρτωση...</div>
+  </div>
+  <div class="chat-input-row">
+    <textarea id="chat-input" rows="1" maxlength="1000" placeholder="Γράψε ένα μήνυμα στην ομάδα... (χωρίς links, αρχεία ή ακατάλληλο περιεχόμενο)"></textarea>
+    <button id="chat-send" class="btn-inline-primary">Αποστολή</button>
+  </div>
+</div>
+
 <!-- ==================== BACK TO TOP ==================== -->
 <button id="back-to-top" title="Επιστροφή στην αρχή" aria-label="Επιστροφή στην αρχή">
   <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
@@ -415,6 +469,23 @@
     <div class="settings-section">
       <h3>Ο λογαριασμός σου</h3>
       <div style="font-size:13px;" id="settings-account-info"></div>
+    </div>
+    <div class="settings-section">
+      <h3>Προφίλ</h3>
+      <div class="avatar-upload-row">
+        <div id="settings-avatar-preview"></div>
+        <div>
+          <button type="button" class="btn-secondary" id="avatar-upload-btn" style="font-size:12px;padding:7px 12px;">Αλλαγή φωτογραφίας</button>
+          <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" hidden>
+        </div>
+      </div>
+      <div class="form-field" style="margin-top:12px;">
+        <label>Νικνέιμ (θα φαίνεται αντί για το email σου)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="nickname-input" maxlength="30" placeholder="π.χ. Τέο">
+          <button type="button" class="btn-inline-primary" id="nickname-save-btn" style="white-space:nowrap;">Αποθήκευση</button>
+        </div>
+      </div>
     </div>
     <div class="settings-section" id="settings-members-section" hidden>
       <h3>Μέλη ομάδας</h3>
@@ -493,6 +564,28 @@ let allRecipes = [];
 let editingId = null;
 let currentViewedRecipe = null;
 let reportRecipeContext = null;
+let heartbeatTimer = null;
+let chatChannel = null;
+let chatOnlineTimer = null;
+let chatMessages = [];
+let profilesById = {};
+
+/* ---------- Avatar helper (used in topbar, chat, members lists) ---------- */
+function displayName(profile) {
+  if (!profile) return '';
+  return profile.nickname || profile.email || '';
+}
+function avatarHtml(profile, size) {
+  size = size || 26;
+  var radius = Math.round(size * 0.23);
+  if (profile && profile.avatar_url) {
+    return '<img src="' + profile.avatar_url + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + radius + 'px;object-fit:cover;display:block;flex-shrink:0;" alt="">';
+  }
+  var label = displayName(profile);
+  var initial = label ? label.charAt(0).toUpperCase() : '?';
+  var fontSize = Math.round(size * 0.42);
+  return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:' + radius + 'px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</div>';
+}
 
 /* ---------- Auth screen wiring ---------- */
 let mode = 'login'; // 'login' | 'signup'
@@ -556,8 +649,8 @@ async function loadProfile(userId) {
 async function enterApp() {
   authScreen.hidden = true;
   appScreen.hidden = false;
-  document.getElementById('user-email').textContent = currentUser.email;
-  document.getElementById('user-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
+  document.getElementById('user-avatar').innerHTML = avatarHtml(currentProfile, 26);
   var badge = document.getElementById('role-badge');
   var isAdmin = currentProfile && currentProfile.role === 'admin';
   badge.textContent = isAdmin ? 'admin' : 'member';
@@ -576,6 +669,7 @@ async function enterApp() {
     await refreshAdminStats();
     await refreshReportsBadge();
   }
+  startHeartbeat();
 }
 
 async function refreshRecipes() {
@@ -739,15 +833,67 @@ document.getElementById('settings-btn').addEventListener('click', async function
   var isAdmin = currentProfile && currentProfile.role === 'admin';
   document.getElementById('settings-account-info').innerHTML =
     '<div>' + escapeHtml(currentUser.email) + '</div><div style="color:var(--ink-soft);margin-top:2px;">' + (isAdmin ? 'Admin — πλήρης πρόσβαση' : 'Μέλος — μπορείς να προσθέτεις συνταγές') + '</div>';
+  document.getElementById('settings-avatar-preview').innerHTML = avatarHtml(currentProfile, 56);
+  document.getElementById('nickname-input').value = (currentProfile && currentProfile.nickname) || '';
   var membersSection = document.getElementById('settings-members-section');
   membersSection.hidden = !isAdmin;
   if (isAdmin) {
-    var res = await sb.from('profiles').select('email, role, created_at').order('created_at');
+    var res = await sb.from('profiles').select('email, role, nickname, avatar_url, last_seen, created_at').order('created_at');
     document.getElementById('members-list').innerHTML = (res.data || []).map(function (m) {
-      return '<div class="member-row"><span>' + escapeHtml(m.email) + '</span><span class="role-badge ' + m.role + '">' + m.role + '</span></div>';
+      var online = isOnline(m.last_seen);
+      return '<div class="member-row"><span style="display:flex;align-items:center;gap:8px;">' + avatarHtml(m, 22) +
+        (online ? '<span class="chat-online"><span class="dot"></span></span>' : '') +
+        escapeHtml(displayName(m)) + '</span><span class="role-badge ' + m.role + '">' + m.role + '</span></div>';
     }).join('');
   }
   settingsModal.classList.add('visible');
+});
+
+document.getElementById('avatar-upload-btn').addEventListener('click', function () {
+  document.getElementById('avatar-file-input').click();
+});
+document.getElementById('avatar-file-input').addEventListener('change', async function (e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert('Η φωτογραφία πρέπει να είναι μικρότερη από 2MB.');
+    e.target.value = '';
+    return;
+  }
+  var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var path = currentUser.id + '/avatar.' + ext;
+  var upRes = await sb.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type });
+  if (upRes.error) {
+    alert('Αποτυχία ανεβάσματος: ' + upRes.error.message);
+    e.target.value = '';
+    return;
+  }
+  var pub = sb.storage.from('avatars').getPublicUrl(path);
+  var url = pub.data.publicUrl + '?t=' + Date.now();
+  var updRes = await sb.from('profiles').update({ avatar_url: url }).eq('id', currentUser.id);
+  if (updRes.error) {
+    alert('Αποτυχία αποθήκευσης: ' + updRes.error.message);
+    return;
+  }
+  currentProfile.avatar_url = url;
+  document.getElementById('settings-avatar-preview').innerHTML = avatarHtml(currentProfile, 56);
+  document.getElementById('user-avatar').innerHTML = avatarHtml(currentProfile, 26);
+  e.target.value = '';
+});
+
+document.getElementById('nickname-save-btn').addEventListener('click', async function () {
+  var val = document.getElementById('nickname-input').value.trim();
+  var res = await sb.from('profiles').update({ nickname: val || null }).eq('id', currentUser.id);
+  if (res.error) {
+    alert('Αποτυχία αποθήκευσης: ' + res.error.message);
+    return;
+  }
+  currentProfile.nickname = val || null;
+  document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
+  var btn = document.getElementById('nickname-save-btn');
+  var orig = btn.textContent;
+  btn.textContent = 'Έγινε!';
+  setTimeout(function () { btn.textContent = orig; }, 1500);
 });
 document.getElementById('settings-modal-close').addEventListener('click', function () { settingsModal.classList.remove('visible'); });
 settingsModal.addEventListener('click', function (e) { if (e.target === settingsModal) settingsModal.classList.remove('visible'); });
@@ -848,12 +994,15 @@ async function renderReportsList() {
     var actionBtn = r.status === 'open'
       ? '<button data-action="resolve-report" data-id="' + r.id + '" class="btn-secondary" style="font-size:11px;padding:5px 10px;">Έγινε</button>'
       : '<span style="font-size:11px;color:var(--ink-soft);">&#10003; έγινε</span>';
+    var openBtn = r.recipe_id
+      ? '<button data-action="open-report-recipe" data-recipe-id="' + r.recipe_id + '" class="btn-secondary" style="font-size:11px;padding:5px 10px;">Άνοιγμα συνταγής</button>'
+      : '';
     return '<div style="border-bottom:1px solid var(--tile-2);padding:12px 0;">' +
       recipeLine +
       '<div style="font-size:12.5px;color:var(--ink);margin-bottom:8px;white-space:pre-wrap;">' + escapeHtml(r.message) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
       '<span style="font-size:11px;color:var(--ink-soft);">' + escapeHtml(r.reporter_email || '') + ' &middot; ' + when + '</span>' +
-      actionBtn +
+      '<div style="display:flex;gap:8px;">' + openBtn + actionBtn + '</div>' +
       '</div></div>';
   }).join('');
 }
@@ -865,17 +1014,176 @@ document.getElementById('admin-reports-btn').addEventListener('click', async fun
 document.getElementById('reports-modal-close').addEventListener('click', function () { document.getElementById('reports-modal').classList.remove('visible'); });
 document.getElementById('reports-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
 document.getElementById('reports-list').addEventListener('click', async function (e) {
-  var btn = e.target.closest('button[data-action="resolve-report"]');
+  var resolveBtn = e.target.closest('button[data-action="resolve-report"]');
+  if (resolveBtn) {
+    var res = await sb.from('reports').update({ status: 'resolved' }).eq('id', resolveBtn.getAttribute('data-id'));
+    if (!res.error) {
+      await renderReportsList();
+      await refreshReportsBadge();
+    }
+    return;
+  }
+  var openBtn = e.target.closest('button[data-action="open-report-recipe"]');
+  if (openBtn) {
+    var recipeId = openBtn.getAttribute('data-recipe-id');
+    var recipe = allRecipes.find(function (r) { return r.id === recipeId; });
+    if (!recipe) {
+      alert('Η συνταγή δεν βρέθηκε — μπορεί να έχει διαγραφεί.');
+      return;
+    }
+    document.getElementById('reports-modal').classList.remove('visible');
+    openRecipeView(recipe);
+  }
+});
+
+/* ---------- Online status (heartbeat) ---------- */
+var ONLINE_WINDOW_MS = 90 * 1000; // "online" = seen within the last 90s
+function isOnline(lastSeenIso) {
+  if (!lastSeenIso) return false;
+  return (Date.now() - new Date(lastSeenIso).getTime()) < ONLINE_WINDOW_MS;
+}
+function startHeartbeat() {
+  stopHeartbeat();
+  pingOnline();
+  heartbeatTimer = setInterval(pingOnline, 25000);
+  document.addEventListener('visibilitychange', onVisibilityPing);
+}
+function stopHeartbeat() {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  document.removeEventListener('visibilitychange', onVisibilityPing);
+}
+function onVisibilityPing() {
+  if (document.visibilityState === 'visible') pingOnline();
+}
+async function pingOnline() {
+  if (!currentUser) return;
+  await sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+}
+
+/* ---------- Chat ---------- */
+var chatScreen = document.getElementById('chat-screen');
+function containsLink(text) {
+  return /(https?:\/\/|www\.)/i.test(text);
+}
+async function loadChatMessages() {
+  var res = await sb.from('messages').select('*, profiles(nickname, email, avatar_url)').order('created_at', { ascending: false }).limit(200);
+  var rows = (res.data || []).slice().reverse();
+  rows.forEach(function (m) { if (m.profiles) profilesById[m.sender_id] = m.profiles; });
+  chatMessages = rows;
+  renderChatMessages();
+}
+function renderChatMessages() {
+  var body = document.getElementById('chat-body');
+  if (!chatMessages.length) {
+    body.innerHTML = '<div class="chat-empty">Δεν υπάρχουν μηνύματα ακόμα — γράψε το πρώτο!</div>';
+    return;
+  }
+  var isAdmin = currentProfile && currentProfile.role === 'admin';
+  body.innerHTML = chatMessages.map(function (m) {
+    var profile = m.profiles || profilesById[m.sender_id] || null;
+    var own = m.sender_id === currentUser.id;
+    var when = new Date(m.created_at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+    var delBtn = (own || isAdmin)
+      ? '<button data-action="delete-msg" data-id="' + m.id + '" title="Διαγραφή" style="background:none;border:none;color:var(--ink-soft);font-size:10.5px;padding:2px 4px;margin-left:6px;">&times;</button>'
+      : '';
+    return '<div class="chat-msg' + (own ? ' own' : '') + '" data-msg-id="' + m.id + '">' +
+      avatarHtml(profile, 30) +
+      '<div class="chat-msg-body">' +
+      '<div class="chat-msg-meta">' + escapeHtml(displayName(profile) || 'Χρήστης') + ' &middot; ' + when + delBtn + '</div>' +
+      '<div class="chat-bubble">' + escapeHtml(m.message) + '</div>' +
+      '</div></div>';
+  }).join('');
+  body.scrollTop = body.scrollHeight;
+}
+document.getElementById('chat-body').addEventListener('click', async function (e) {
+  var btn = e.target.closest('button[data-action="delete-msg"]');
   if (!btn) return;
-  var res = await sb.from('reports').update({ status: 'resolved' }).eq('id', btn.getAttribute('data-id'));
-  if (!res.error) {
-    await renderReportsList();
-    await refreshReportsBadge();
+  if (!confirm('Διαγραφή αυτού του μηνύματος;')) return;
+  await sb.from('messages').delete().eq('id', btn.getAttribute('data-id'));
+});
+function removeChatMessage(id) {
+  chatMessages = chatMessages.filter(function (m) { return m.id !== id; });
+  renderChatMessages();
+}
+function subscribeChat() {
+  if (chatChannel) return;
+  chatChannel = sb.channel('public:messages')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async function (payload) {
+      var row = payload.new;
+      if (!profilesById[row.sender_id]) {
+        var pres = await sb.from('profiles').select('id, email, nickname, avatar_url').eq('id', row.sender_id).single();
+        if (pres.data) profilesById[row.sender_id] = pres.data;
+      }
+      row.profiles = profilesById[row.sender_id] || null;
+      chatMessages.push(row);
+      renderChatMessages();
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, function (payload) {
+      removeChatMessage(payload.old.id);
+    })
+    .subscribe();
+}
+function unsubscribeChat() {
+  if (chatChannel) {
+    sb.removeChannel(chatChannel);
+    chatChannel = null;
+  }
+}
+async function refreshChatOnline() {
+  var res = await sb.from('profiles').select('id, email, nickname, last_seen');
+  var onlineNames = (res.data || []).filter(function (p) { return isOnline(p.last_seen); }).map(function (p) { return displayName(p); });
+  var el = document.getElementById('chat-online-count');
+  if (onlineNames.length) {
+    el.innerHTML = '<span class="dot"></span>Online: ' + onlineNames.map(function (n) { return escapeHtml(n); }).join(', ');
+  } else {
+    el.textContent = 'Κανείς online αυτή τη στιγμή';
+  }
+}
+document.getElementById('chat-btn').addEventListener('click', async function () {
+  chatScreen.hidden = false;
+  document.body.style.overflow = 'hidden';
+  document.getElementById('chat-body').innerHTML = '<div class="chat-empty">Φόρτωση...</div>';
+  await loadChatMessages();
+  subscribeChat();
+  await refreshChatOnline();
+  if (chatOnlineTimer) clearInterval(chatOnlineTimer);
+  chatOnlineTimer = setInterval(refreshChatOnline, 20000);
+  document.getElementById('chat-input').focus();
+});
+function closeChat() {
+  chatScreen.hidden = true;
+  document.body.style.overflow = '';
+  unsubscribeChat();
+  if (chatOnlineTimer) { clearInterval(chatOnlineTimer); chatOnlineTimer = null; }
+}
+document.getElementById('chat-back').addEventListener('click', closeChat);
+async function sendChatMessage() {
+  var input = document.getElementById('chat-input');
+  var text = input.value.trim();
+  if (!text) return;
+  if (containsLink(text)) {
+    alert('Δεν επιτρέπονται links στο chat, για την ασφάλεια της ομάδας.');
+    return;
+  }
+  input.value = '';
+  var res = await sb.from('messages').insert({ sender_id: currentUser.id, message: text });
+  if (res.error) {
+    alert('Αποτυχία αποστολής: ' + res.error.message);
+    input.value = text;
+  }
+}
+document.getElementById('chat-send').addEventListener('click', sendChatMessage);
+document.getElementById('chat-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
   }
 });
 
 /* ---------- Logout ---------- */
 document.getElementById('logout-btn').addEventListener('click', async function () {
+  closeChat();
+  stopHeartbeat();
   await sb.auth.signOut();
 });
 
@@ -889,6 +1197,10 @@ if (configured) {
     } else {
       currentUser = null;
       currentProfile = null;
+      chatMessages = [];
+      profilesById = {};
+      closeChat();
+      stopHeartbeat();
       authScreen.hidden = false;
       appScreen.hidden = true;
     }
