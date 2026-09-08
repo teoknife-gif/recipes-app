@@ -193,6 +193,30 @@
   .recent-empty { font-size: 12.5px; color: var(--ink-soft); padding: 4px 2px 8px; }
   .cat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 
+  /* ---------- Lists (custom named collections, e.g. one per venue/season) ---------- */
+  .lists-scroller {
+    display: flex; gap: 14px; overflow-x: auto; scroll-behavior: smooth;
+    padding: 2px 2px 12px; -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .lists-scroller::-webkit-scrollbar { height: 6px; }
+  .lists-scroller::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+  .list-chip {
+    flex: 0 0 auto; width: 88px; display: flex; flex-direction: column; align-items: center;
+    gap: 6px; cursor: pointer; background: none; border: none; color: var(--ink); padding: 0;
+  }
+  .list-chip-icon {
+    width: 62px; height: 62px; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 22px; font-weight: 700; font-family: "IBM Plex Mono", monospace;
+    box-shadow: 0 4px 12px rgba(0,0,0,.35); transition: transform .15s;
+  }
+  .list-chip:hover .list-chip-icon { transform: translateY(-2px); }
+  .list-chip-name { font-size: 11.5px; font-weight: 600; text-align: center; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .list-chip-count { font-size: 10px; color: var(--ink-soft); }
+  .list-chip-add .list-chip-icon { background: var(--tile); border: 1.5px dashed var(--line); color: var(--ink-soft); box-shadow: none; }
+  .list-chip-add:hover .list-chip-icon { border-color: var(--accent); color: var(--accent); }
+
   /* ---------- Profile view ---------- */
   .profile-card {
     display: flex; align-items: center; gap: 13px; background: rgba(17,24,39,.72);
@@ -351,6 +375,40 @@
   .rv-section .ingredients { font-size: 14px; }
   .rv-section .method-text { font-size: 14.5px; }
 
+  /* ---------- List detail (full screen) — same z-index reasoning as
+     #recipe-view-screen above (240, below bottom nav's 250). Uses its own
+     .lv-topbar/.lv-body classes rather than .rv-topbar/.rv-body, because
+     syncRvTopbarHeight()/updateRvTopbarPin() look those classes up
+     generically — reusing them here would make that JS silently grab the
+     wrong screen's elements. This topbar is position:sticky instead (it
+     scrolls within #list-view-screen's own overflow-y:auto), so it needs
+     no pinning JS of its own. */
+  #list-view-screen { position: fixed; inset: 0; background: var(--bg); z-index: 240; overflow-y: auto; }
+  .lv-topbar {
+    position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: 14px 20px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  .lv-topbar-actions { display: flex; gap: 6px; align-items: center; }
+  .lv-icon-btn {
+    background: none; border: 1px solid var(--line); color: var(--ink-soft);
+    border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  }
+  .lv-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .lv-icon-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .lv-body { max-width: 760px; margin: 0 auto; padding: 24px 24px 130px; box-sizing: border-box; }
+  .lv-header-icon {
+    width: 58px; height: 58px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 20px; font-weight: 700; font-family: "IBM Plex Mono", monospace; margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  }
+  #lv-name { font-size: 23px; font-weight: 700; margin: 0 0 4px; }
+  .lv-count { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+  .lv-add-btn {
+    display: flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-ink);
+    border: none; border-radius: 8px; padding: 9px 15px; font-size: 12.5px; font-weight: 700; margin-bottom: 18px;
+  }
+  .lv-empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); font-size: 13px; }
+
   /* ---------- Modal (add recipe / settings) ---------- */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.6);
@@ -382,6 +440,23 @@
   }
   .btn-inline-primary:disabled { opacity: .55; }
   .form-error { background: rgba(248,113,113,.1); border: 1px solid var(--danger); color: var(--danger); font-size: 12px; padding: 8px 10px; border-radius: 7px; margin-bottom: 10px; }
+
+  /* ---------- Add-to-list picker (two modes: pick lists for a recipe,
+     or pick recipes for a list) ---------- */
+  .list-picker-body { max-height: 50vh; overflow-y: auto; margin-top: 6px; }
+  .list-picker-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--tile-2);
+    cursor: pointer; font-size: 13.5px;
+  }
+  .list-picker-row:last-child { border-bottom: none; }
+  .list-picker-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; }
+  .list-picker-row .lpr-label { flex: 1; }
+  .list-picker-row .lpr-sub { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+  .list-picker-new {
+    display: flex; align-items: center; gap: 10px; padding: 12px 4px 4px; cursor: pointer;
+    color: var(--accent); font-weight: 600; font-size: 13.5px; border-top: 1px solid var(--line); margin-top: 6px;
+  }
+  .list-picker-empty { font-size: 12.5px; color: var(--ink-soft); padding: 16px 4px; text-align: center; }
 
   .settings-section { margin-bottom: 20px; }
   .settings-section h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; margin: 0 0 10px; }
@@ -530,6 +605,11 @@
         <div class="cat-scroller" id="cat-scroller"></div>
       </div>
 
+      <div id="lists-wrap">
+        <div class="section-title">Οι λίστες μου</div>
+        <div class="lists-scroller" id="lists-scroller"></div>
+      </div>
+
       <div id="recent-wrap">
         <div class="recent-title-row">
           <div class="section-title">Πρόσφατα προβλήθηκαν</div>
@@ -648,6 +728,9 @@
         <option value="it">Μετάφραση: Ιταλικά</option>
         <option value="fr">Μετάφραση: Γαλλικά</option>
       </select>
+      <button id="rv-list-btn" class="fav-star-btn" title="Προσθήκη σε λίστα">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V6a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v2"/><path d="M4 15h8"/><path d="M4 19h4"/><line x1="19" y1="14" x2="19" y2="20"/><line x1="16" y1="17" x2="22" y2="17"/></svg>
+      </button>
       <button id="rv-fav-btn" class="fav-star-btn" title="Αγαπημένα">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
@@ -673,6 +756,41 @@
     </div>
   </div>
   <button id="rv-back-to-top" class="rv-back-to-top-btn" title="Επιστροφή στην αρχή της συνταγής" aria-label="Επιστροφή στην αρχή της συνταγής">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+  </button>
+</div>
+
+<!-- ==================== LIST DETAIL (full screen) ==================== -->
+<div id="list-view-screen" hidden>
+  <div class="lv-topbar">
+    <button id="lv-back" class="rv-back-btn">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Πίσω
+    </button>
+    <div class="lv-topbar-actions">
+      <button id="lv-rename-btn" class="lv-icon-btn" title="Μετονομασία λίστας" aria-label="Μετονομασία λίστας">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <button id="lv-delete-btn" class="lv-icon-btn danger" title="Διαγραφή λίστας" aria-label="Διαγραφή λίστας">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="lv-body">
+    <div class="lv-header-icon" id="lv-header-icon"></div>
+    <h1 id="lv-name"></h1>
+    <div class="lv-count" id="lv-count"></div>
+    <button type="button" class="lv-add-btn" id="lv-add-recipes-btn">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Προσθήκη συνταγών
+    </button>
+    <table id="lv-recipes-table">
+      <thead><tr><th>Όνομα</th><th>Κατηγορία</th><th></th></tr></thead>
+      <tbody id="lv-recipes-list"></tbody>
+    </table>
+    <div class="lv-empty" id="lv-empty" hidden>Η λίστα είναι άδεια — πάτησε «Προσθήκη συνταγών» για να βάλεις τις πρώτες.</div>
+  </div>
+  <button id="list-view-back-to-top" class="rv-back-to-top-btn" title="Επιστροφή στην αρχή" aria-label="Επιστροφή στην αρχή">
     <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
   </button>
 </div>
@@ -795,6 +913,38 @@
       <button class="modal-close" id="reports-modal-close">&times;</button>
     </div>
     <div id="reports-list"></div>
+  </div>
+</div>
+
+<!-- ==================== CREATE LIST MODAL ==================== -->
+<div class="modal-overlay" id="list-create-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Νέα λίστα</h2>
+      <button class="modal-close" id="list-create-modal-close">&times;</button>
+    </div>
+    <div class="form-error" id="list-create-form-error" hidden></div>
+    <form id="list-create-form">
+      <div class="form-field"><label>Όνομα λίστας</label><input type="text" id="list-create-name" required maxlength="80" placeholder="π.χ. Beefbar &mdash; Χειμώνας 2026"></div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" id="list-create-cancel">Άκυρο</button>
+        <button type="submit" class="btn-inline-primary" id="list-create-submit">Δημιουργία</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== ADD-TO-LIST PICKER MODAL ==================== -->
+<div class="modal-overlay" id="list-picker-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="list-picker-title">Προσθήκη σε λίστα</h2>
+      <button class="modal-close" id="list-picker-modal-close">&times;</button>
+    </div>
+    <div class="form-field" id="list-picker-search-wrap" hidden>
+      <input type="text" id="list-picker-search" placeholder="Αναζήτηση συνταγής&hellip;" autocomplete="off">
+    </div>
+    <div class="list-picker-body" id="list-picker-body"></div>
   </div>
 </div>
 
@@ -1011,6 +1161,7 @@ async function enterApp() {
 
   await refreshFavorites();
   await refreshRecipes();
+  await refreshLists();
   if (isAdmin) {
     await refreshAdminStats();
     await refreshReportsBadge();
@@ -1217,6 +1368,7 @@ document.getElementById('bottom-nav').addEventListener('click', function (e) {
   // #recipe-view-screen z-index note above) — jumping to another tab from
   // there should close the recipe view first, not leave it hovering behind.
   if (!recipeViewScreen.hidden) closeRecipeView();
+  if (!listViewScreen.hidden) closeListView();
   var tab = btn.getAttribute('data-tab');
   if (tab === 'create') { openRecipeModal(null); return; }
   switchTab(tab);
@@ -1362,6 +1514,10 @@ document.getElementById('rv-fav-btn').addEventListener('click', async function (
   updateRvFavButton();
   renderList();
 });
+document.getElementById('rv-list-btn').addEventListener('click', function () {
+  if (!currentViewedRecipe) return;
+  openListPickerForRecipe(currentViewedRecipe.id);
+});
 function closeRecipeView() {
   recipeViewScreen.hidden = true;
   document.body.style.overflow = '';
@@ -1394,6 +1550,315 @@ function addSwipeBack(el, backFn) {
   el.addEventListener('touchcancel', function () { tracking = false; }, { passive: true });
 }
 addSwipeBack(recipeViewScreen, closeRecipeView);
+
+/* ---------- Lists: custom named collections (e.g. one per venue or per
+   menu season) you build yourself to gather the recipes you're planning
+   to work on for that project. Shared with the whole signed-in team, like
+   the recipes themselves — anyone can add/remove recipes from any list,
+   only the creator (or an admin) can rename/delete the list itself. ---------- */
+var allLists = [];
+var listRecipeMap = {}; // listId -> Set of recipeIds currently in that list
+var listPickerMode = null; // 'recipes-for-list' | 'lists-for-recipe'
+var listPickerContextId = null; // the listId or recipeId this picker session is for
+var currentViewedListId = null;
+
+async function refreshLists() {
+  var listsRes = await sb.from('lists').select('*').order('created_at');
+  allLists = listsRes.data || [];
+  var lrRes = await sb.from('list_recipes').select('list_id, recipe_id');
+  listRecipeMap = {};
+  (lrRes.data || []).forEach(function (row) {
+    if (!listRecipeMap[row.list_id]) listRecipeMap[row.list_id] = new Set();
+    listRecipeMap[row.list_id].add(row.recipe_id);
+  });
+  renderListsScroller();
+  if (currentViewedListId) renderListViewRecipes();
+}
+
+function renderListsScroller() {
+  var scroller = document.getElementById('lists-scroller');
+  var addChip = '<button type="button" class="list-chip list-chip-add" id="list-chip-add">' +
+    '<div class="list-chip-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>' +
+    '<div class="list-chip-name">Νέα λίστα</div>' +
+    '</button>';
+  var chips = allLists.map(function (l) {
+    var count = listRecipeMap[l.id] ? listRecipeMap[l.id].size : 0;
+    var initial = (l.name || '?').charAt(0).toUpperCase();
+    return '<button type="button" class="list-chip" data-list-id="' + l.id + '">' +
+      '<div class="list-chip-icon" style="background:' + categoryColor(l.name) + ';">' + escapeHtml(initial) + '</div>' +
+      '<div class="list-chip-name">' + escapeHtml(l.name) + '</div>' +
+      '<div class="list-chip-count">' + count + (count === 1 ? ' συνταγή' : ' συνταγές') + '</div>' +
+      '</button>';
+  }).join('');
+  scroller.innerHTML = addChip + chips;
+}
+document.getElementById('lists-scroller').addEventListener('click', function (e) {
+  if (e.target.closest('#list-chip-add')) { openListCreateModal(); return; }
+  var chip = e.target.closest('.list-chip[data-list-id]');
+  if (chip) openListView(chip.getAttribute('data-list-id'));
+});
+document.getElementById('lists-scroller').addEventListener('wheel', function (e) {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    this.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
+}, { passive: false });
+
+/* ---------- List detail (full screen) ---------- */
+var listViewScreen = document.getElementById('list-view-screen');
+function openListView(listId) {
+  var list = allLists.find(function (l) { return l.id === listId; });
+  if (!list) return;
+  currentViewedListId = listId;
+  document.getElementById('lv-name').textContent = list.name;
+  var iconEl = document.getElementById('lv-header-icon');
+  iconEl.textContent = (list.name || '?').charAt(0).toUpperCase();
+  iconEl.style.background = categoryColor(list.name);
+  renderListViewRecipes();
+  listViewScreen.hidden = false;
+  listViewScreen.scrollTop = 0;
+  document.getElementById('list-view-back-to-top').classList.remove('visible');
+  document.body.style.overflow = 'hidden';
+}
+function closeListView() {
+  listViewScreen.hidden = true;
+  currentViewedListId = null;
+  document.body.style.overflow = recipeViewScreen.hidden ? '' : 'hidden';
+}
+function renderListViewRecipes() {
+  if (!currentViewedListId) return;
+  var idSet = listRecipeMap[currentViewedListId];
+  var items = (idSet ? Array.from(idSet) : [])
+    .map(function (id) { return allRecipes.find(function (r) { return r.id === id; }); })
+    .filter(Boolean)
+    .sort(function (a, b) { return a.recipe_name.localeCompare(b.recipe_name, 'el'); });
+  document.getElementById('lv-count').textContent = items.length + (items.length === 1 ? ' συνταγή' : ' συνταγές');
+  var table = document.getElementById('lv-recipes-table');
+  var tbody = document.getElementById('lv-recipes-list');
+  var emptyEl = document.getElementById('lv-empty');
+  if (!items.length) {
+    table.hidden = true;
+    emptyEl.hidden = false;
+    tbody.innerHTML = '';
+    return;
+  }
+  table.hidden = false;
+  emptyEl.hidden = true;
+  tbody.innerHTML = items.map(function (r) {
+    return '<tr data-row-id="' + r.id + '" class="recipe-row">' +
+      '<td><div class="r-name">' + escapeHtml(r.recipe_name) + '</div></td>' +
+      '<td class="r-cat"><span class="cat-dot" style="background:' + categoryColor(r.category) + ';"></span>' + escapeHtml(r.category) + '</td>' +
+      '<td><div class="row-actions"><button data-action="remove-from-list" data-id="' + r.id + '" title="Αφαίρεση από τη λίστα"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div></td>' +
+      '</tr>';
+  }).join('');
+}
+document.getElementById('lv-recipes-list').addEventListener('click', async function (e) {
+  var removeBtn = e.target.closest('button[data-action="remove-from-list"]');
+  if (removeBtn) {
+    await toggleListRecipe(currentViewedListId, removeBtn.getAttribute('data-id'), false);
+    return;
+  }
+  var row = e.target.closest('tr[data-row-id]');
+  if (row) {
+    var r = allRecipes.find(function (r) { return r.id === row.getAttribute('data-row-id'); });
+    if (r) { closeListView(); openRecipeView(r); }
+  }
+});
+document.getElementById('lv-back').addEventListener('click', closeListView);
+document.getElementById('lv-add-recipes-btn').addEventListener('click', function () {
+  if (!currentViewedListId) return;
+  openListPickerForList(currentViewedListId);
+});
+addSwipeBack(listViewScreen, closeListView);
+
+var listViewBackToTopBtn = document.getElementById('list-view-back-to-top');
+listViewScreen.addEventListener('scroll', function () {
+  if (listViewScreen.scrollTop > 260) listViewBackToTopBtn.classList.add('visible');
+  else listViewBackToTopBtn.classList.remove('visible');
+});
+listViewBackToTopBtn.addEventListener('click', function () {
+  listViewScreen.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+document.getElementById('lv-rename-btn').addEventListener('click', async function () {
+  var list = allLists.find(function (l) { return l.id === currentViewedListId; });
+  if (!list) return;
+  var name = prompt('Νέο όνομα λίστας:', list.name);
+  if (name === null) return;
+  name = name.trim();
+  if (!name || name === list.name) return;
+  var res = await sb.from('lists').update({ name: name }).eq('id', list.id);
+  if (res.error) { alert('Αποτυχία μετονομασίας: ' + res.error.message); return; }
+  await refreshLists();
+  var updated = allLists.find(function (l) { return l.id === currentViewedListId; });
+  if (updated) {
+    document.getElementById('lv-name').textContent = updated.name;
+    var iconEl = document.getElementById('lv-header-icon');
+    iconEl.textContent = (updated.name || '?').charAt(0).toUpperCase();
+    iconEl.style.background = categoryColor(updated.name);
+  }
+});
+document.getElementById('lv-delete-btn').addEventListener('click', async function () {
+  var list = allLists.find(function (l) { return l.id === currentViewedListId; });
+  if (!list) return;
+  if (!confirm('Διαγραφή της λίστας «' + list.name + '»; Οι συνταγές μέσα της δεν διαγράφονται, μόνο η ίδια η λίστα.')) return;
+  var res = await sb.from('lists').delete().eq('id', list.id);
+  if (res.error) { alert('Αποτυχία διαγραφής: ' + res.error.message); return; }
+  closeListView();
+  await refreshLists();
+});
+
+/* ---------- Create-list modal ---------- */
+var listCreateModal = document.getElementById('list-create-modal');
+function openListCreateModal() {
+  document.getElementById('list-create-form-error').hidden = true;
+  document.getElementById('list-create-name').value = '';
+  listCreateModal.classList.add('visible');
+  setTimeout(function () { document.getElementById('list-create-name').focus(); }, 50);
+}
+function closeListCreateModal() {
+  listCreateModal.classList.remove('visible');
+}
+document.getElementById('list-create-modal-close').addEventListener('click', closeListCreateModal);
+document.getElementById('list-create-cancel').addEventListener('click', closeListCreateModal);
+listCreateModal.addEventListener('click', function (e) { if (e.target === listCreateModal) closeListCreateModal(); });
+
+document.getElementById('list-create-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var name = document.getElementById('list-create-name').value.trim();
+  if (!name) return;
+  var submitBtn = document.getElementById('list-create-submit');
+  submitBtn.disabled = true;
+  var res = await sb.from('lists').insert({ name: name, created_by: currentUser.id }).select().single();
+  submitBtn.disabled = false;
+  if (res.error) {
+    var errEl = document.getElementById('list-create-form-error');
+    errEl.hidden = false;
+    errEl.textContent = res.error.message;
+    return;
+  }
+  closeListCreateModal();
+  await refreshLists();
+  var newId = res.data && res.data.id;
+  if (newId) openListView(newId);
+});
+
+/* ---------- Add-to-list picker (two modes) ----------
+   'lists-for-recipe': opened from inside a recipe (rv-list-btn) — shows a
+   checklist of all lists, with an inline "+ Νέα λίστα" row.
+   'recipes-for-list': opened from inside a list (lv-add-recipes-btn) —
+   shows a searchable checklist of all recipes. */
+var listPickerModal = document.getElementById('list-picker-modal');
+function openListPickerForRecipe(recipeId) {
+  listPickerMode = 'lists-for-recipe';
+  listPickerContextId = recipeId;
+  document.getElementById('list-picker-title').textContent = 'Προσθήκη σε λίστα';
+  document.getElementById('list-picker-search-wrap').hidden = true;
+  renderListPickerRows();
+  listPickerModal.classList.add('visible');
+}
+function openListPickerForList(listId) {
+  listPickerMode = 'recipes-for-list';
+  listPickerContextId = listId;
+  document.getElementById('list-picker-title').textContent = 'Προσθήκη συνταγών';
+  document.getElementById('list-picker-search').value = '';
+  document.getElementById('list-picker-search-wrap').hidden = false;
+  renderListPickerRows();
+  listPickerModal.classList.add('visible');
+}
+function closeListPickerModal() {
+  listPickerModal.classList.remove('visible');
+  listPickerMode = null;
+  listPickerContextId = null;
+}
+document.getElementById('list-picker-modal-close').addEventListener('click', closeListPickerModal);
+listPickerModal.addEventListener('click', function (e) { if (e.target === listPickerModal) closeListPickerModal(); });
+
+function rowHtml(id, checked, label, sub) {
+  return '<label class="list-picker-row">' +
+    '<input type="checkbox" data-id="' + id + '"' + (checked ? ' checked' : '') + '>' +
+    '<span class="lpr-label">' + escapeHtml(label) + (sub ? '<div class="lpr-sub">' + escapeHtml(sub) + '</div>' : '') + '</span>' +
+    '</label>';
+}
+function renderListPickerRows() {
+  var body = document.getElementById('list-picker-body');
+  if (listPickerMode === 'lists-for-recipe') {
+    var recipeId = listPickerContextId;
+    var newRow = '<div class="list-picker-new" id="list-picker-new-row">' +
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+      'Νέα λίστα</div>';
+    if (!allLists.length) {
+      body.innerHTML = '<div class="list-picker-empty">Δεν έχεις φτιάξει καμία λίστα ακόμα.</div>' + newRow;
+      return;
+    }
+    body.innerHTML = allLists.map(function (l) {
+      var checked = !!(listRecipeMap[l.id] && listRecipeMap[l.id].has(recipeId));
+      var count = listRecipeMap[l.id] ? listRecipeMap[l.id].size : 0;
+      return rowHtml(l.id, checked, l.name, count + (count === 1 ? ' συνταγή' : ' συνταγές'));
+    }).join('') + newRow;
+  } else if (listPickerMode === 'recipes-for-list') {
+    var listId = listPickerContextId;
+    var q = document.getElementById('list-picker-search').value.trim().toLowerCase();
+    var filtered = allRecipes
+      .filter(function (r) { return !q || r.recipe_name.toLowerCase().indexOf(q) !== -1; })
+      .sort(function (a, b) { return a.recipe_name.localeCompare(b.recipe_name, 'el'); });
+    if (!filtered.length) {
+      body.innerHTML = '<div class="list-picker-empty">Καμία συνταγή δεν βρέθηκε.</div>';
+      return;
+    }
+    body.innerHTML = filtered.map(function (r) {
+      var checked = !!(listRecipeMap[listId] && listRecipeMap[listId].has(r.id));
+      return rowHtml(r.id, checked, r.recipe_name, r.category);
+    }).join('');
+  }
+}
+document.getElementById('list-picker-search').addEventListener('input', renderListPickerRows);
+document.getElementById('list-picker-body').addEventListener('change', async function (e) {
+  var cb = e.target.closest('input[type="checkbox"]');
+  if (!cb) return;
+  var id = cb.getAttribute('data-id');
+  var add = cb.checked;
+  cb.disabled = true;
+  if (listPickerMode === 'lists-for-recipe') {
+    await toggleListRecipe(id, listPickerContextId, add);
+  } else if (listPickerMode === 'recipes-for-list') {
+    await toggleListRecipe(listPickerContextId, id, add);
+  }
+  cb.disabled = false;
+});
+document.getElementById('list-picker-body').addEventListener('click', async function (e) {
+  var newRow = e.target.closest('#list-picker-new-row');
+  if (!newRow) return;
+  var name = prompt('Όνομα νέας λίστας:');
+  if (name === null) return;
+  name = name.trim();
+  if (!name) return;
+  var res = await sb.from('lists').insert({ name: name, created_by: currentUser.id }).select().single();
+  if (res.error) { alert('Αποτυχία δημιουργίας: ' + res.error.message); return; }
+  await refreshLists();
+  var newId = res.data && res.data.id;
+  if (newId && listPickerMode === 'lists-for-recipe' && listPickerContextId) {
+    await toggleListRecipe(newId, listPickerContextId, true);
+  } else {
+    renderListPickerRows();
+  }
+});
+
+async function toggleListRecipe(listId, recipeId, add) {
+  if (add) {
+    if (!listRecipeMap[listId]) listRecipeMap[listId] = new Set();
+    listRecipeMap[listId].add(recipeId);
+    var res = await sb.from('list_recipes').insert({ list_id: listId, recipe_id: recipeId, added_by: currentUser.id });
+    if (res.error) { listRecipeMap[listId].delete(recipeId); alert('Αποτυχία προσθήκης: ' + res.error.message); }
+  } else {
+    if (listRecipeMap[listId]) listRecipeMap[listId].delete(recipeId);
+    var res2 = await sb.from('list_recipes').delete().eq('list_id', listId).eq('recipe_id', recipeId);
+    if (res2.error) { alert('Αποτυχία αφαίρεσης: ' + res2.error.message); }
+  }
+  renderListsScroller();
+  if (currentViewedListId === listId) renderListViewRecipes();
+  if (listPickerModal.classList.contains('visible')) renderListPickerRows();
+}
 
 /* ---------- Add/edit recipe modal ---------- */
 const recipeModal = document.getElementById('recipe-modal');
