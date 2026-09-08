@@ -131,12 +131,117 @@
   }
   .icon-btn:hover { border-color: var(--line); color: var(--ink); }
 
-  main { padding: 22px 26px 60px; max-width: 1200px; margin: 0 auto; }
+  #chat-btn {
+    position: fixed; right: 16px; bottom: calc(136px + env(safe-area-inset-bottom));
+    background: linear-gradient(135deg, var(--accent), #67e8f9);
+    border: none; border-radius: 50%;
+    width: 46px; height: 46px; padding: 0;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(34,211,238,.4);
+    transition: transform .15s ease, box-shadow .15s ease;
+    z-index: 220;
+  }
+  #chat-btn svg { width: 21px; height: 21px; stroke: var(--accent-ink); }
+  #chat-btn:hover { transform: scale(1.08) rotate(-4deg); box-shadow: 0 6px 20px rgba(34,211,238,.55); border-color: transparent; }
+  #chat-btn:active { transform: scale(.96); }
+  @keyframes chatFabPulse { 0%, 100% { box-shadow: 0 4px 16px rgba(34,211,238,.4), 0 0 0 0 rgba(34,211,238,.45); } 50% { box-shadow: 0 4px 16px rgba(34,211,238,.4), 0 0 0 8px rgba(34,211,238,0); } }
+  #chat-btn { animation: chatFabPulse 3.2s ease-in-out infinite; }
 
-  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
-  .tile { flex: 1; background: rgba(17,24,39,.72); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; }
-  .tile .lbl { font-size: 10.5px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
-  .tile .val { font-size: 21px; font-weight: 700; margin-top: 4px; font-family: "IBM Plex Mono", monospace; color: var(--accent); }
+  main { padding: 22px 26px 120px; max-width: 1200px; margin: 0 auto; }
+
+  /* ---------- Home view ---------- */
+  .home-greeting { font-size: 23px; font-weight: 700; margin: 4px 0 18px; }
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; margin: 22px 0 10px;
+  }
+  #recent-wrap .section-title { margin-top: 26px; }
+  .recent-scroller {
+    display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth;
+    padding: 2px 2px 10px; -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .recent-scroller::-webkit-scrollbar { height: 6px; }
+  .recent-scroller::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+  .recent-card {
+    flex: 0 0 auto; width: 128px; background: var(--tile); border: 1px solid var(--line);
+    border-radius: 12px; overflow: hidden; cursor: pointer; transition: border-color .15s, transform .15s;
+  }
+  .recent-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .recent-card-top {
+    height: 64px; display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.92); font-size: 24px; font-weight: 700;
+    font-family: "IBM Plex Mono", monospace;
+  }
+  .recent-card-name { font-size: 12.5px; font-weight: 600; padding: 9px 10px 2px; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .recent-card-cat { font-size: 10px; color: var(--ink-soft); padding: 2px 10px 10px; }
+  .recent-empty { font-size: 12.5px; color: var(--ink-soft); padding: 4px 2px 8px; }
+  .cat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* ---------- Profile view ---------- */
+  .profile-card {
+    display: flex; align-items: center; gap: 13px; background: rgba(17,24,39,.72);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 20px;
+  }
+  .profile-card .profile-id { flex: 1; min-width: 0; }
+  .profile-card .profile-name { font-size: 15px; font-weight: 700; }
+  .profile-card .profile-email { font-size: 12px; color: var(--ink-soft); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-row {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--tile); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 12px; padding: 13px 15px; font-size: 13.5px; font-weight: 600;
+    margin-bottom: 10px; position: relative; transition: border-color .15s;
+  }
+  .profile-row:hover { border-color: var(--accent); }
+  .profile-row svg:first-child { color: var(--accent); flex-shrink: 0; }
+  .profile-row .prow-label { flex: 1; }
+  .profile-row .prow-chev { color: var(--ink-soft); flex-shrink: 0; }
+  .profile-row.danger:hover { border-color: var(--danger); }
+  .profile-row.danger svg:first-child { color: var(--danger); }
+  .profile-row .badge-dot { position: static; margin-left: -4px; }
+
+  /* ---------- Bottom nav ---------- */
+  #bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 250;
+    display: flex; background: rgba(11,17,32,.92); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .bn-btn {
+    flex: 1; background: none; border: none; color: var(--ink-soft);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 7px 2px; font-size: 10px; font-weight: 600; border-radius: 10px;
+    transition: color .15s;
+  }
+  .bn-btn svg { width: 21px; height: 21px; }
+  .bn-btn.active { color: var(--accent); }
+  .bn-create svg {
+    width: 30px; height: 30px; padding: 4px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); stroke: var(--accent-ink);
+    box-shadow: 0 3px 10px rgba(34,211,238,.4);
+  }
+
+  .stats { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tile { flex: 0 0 auto; min-width: 100px; background: rgba(17,24,39,.72); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 13px; }
+  .tile .lbl { font-size: 9px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .tile .val { font-size: 16px; font-weight: 700; margin-top: 2px; font-family: "IBM Plex Mono", monospace; color: var(--accent); }
+
+  /* ---------- Category scroller ---------- */
+  .cat-scroller-wrap { margin-bottom: 16px; }
+  .cat-scroller {
+    display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth;
+    padding: 2px 2px 8px; -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .cat-scroller::-webkit-scrollbar { height: 6px; }
+  .cat-scroller::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+  .cat-chip {
+    flex: 0 0 auto; background: var(--tile); border: 1px solid var(--line); color: var(--ink-soft);
+    border-radius: 20px; padding: 7px 15px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+  }
+  .cat-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .cat-chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
   .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
   .search-wrap { position: relative; flex: 1; min-width: 200px; }
@@ -186,9 +291,16 @@
   .ingredients li { padding: 3px 0; border-bottom: 1px dashed var(--line); }
   .method-text { font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; margin: 0; color: var(--ink); }
 
-  /* ---------- Recipe detail (full screen) ---------- */
+  /* ---------- Recipe detail (full screen) ----------
+     z-index sits BELOW #bottom-nav (250) on purpose, so the bottom nav bar
+     stays visible and usable while reading a recipe (tap Home/Search/Profile
+     straight away, no need to hit "back" first) — but still ABOVE the
+     floating chat button / global back-to-top (220 / 200), which stay
+     hidden while a recipe is open in favor of the dedicated #rv-back-to-top
+     button below. Chat screen (z-index 300) still fully covers the nav,
+     since its own input row lives at the very bottom of the screen. */
   #recipe-view-screen {
-    position: fixed; inset: 0; background: var(--bg); z-index: 300; overflow-y: auto;
+    position: fixed; inset: 0; background: var(--bg); z-index: 240; overflow-y: auto;
   }
   .rv-topbar {
     position: fixed; top: 0; left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--line);
@@ -206,7 +318,18 @@
     display: flex; align-items: center; gap: 6px;
   }
   .rv-back-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .rv-body { max-width: 760px; margin: 0 auto; padding: 76px 24px 90px; box-sizing: border-box; }
+  .rv-body { max-width: 760px; margin: 0 auto; padding: 76px 24px 130px; box-sizing: border-box; }
+  .rv-back-to-top-btn {
+    position: fixed; right: 20px; bottom: calc(78px + env(safe-area-inset-bottom));
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); border: none;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    opacity: 0; pointer-events: none; transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    z-index: 241;
+  }
+  .rv-back-to-top-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
   .rv-cat { font-size: 11px; color: var(--accent); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
   #rv-name { font-size: 25px; font-weight: 700; margin: 0 0 6px; line-height: 1.25; }
   .rv-yield { font-size: 13px; color: var(--ink-soft); margin-bottom: 26px; }
@@ -258,7 +381,7 @@
   #back-to-top {
     position: fixed;
     right: 20px;
-    bottom: 20px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
     width: 46px;
     height: 46px;
     border-radius: 50%;
@@ -375,59 +498,122 @@
   <div class="topbar">
     <div class="brand">ΣΥΝΤΑΓΕΣ &middot; Control panel</div>
     <div class="user-menu">
-      <span id="user-avatar"></span>
-      <span id="user-email"></span>
       <span class="role-badge" id="role-badge"></span>
-      <button class="icon-btn" id="chat-btn" title="Chat ομάδας" aria-label="Chat ομάδας">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-      </button>
-      <button class="icon-btn" id="report-btn" title="Αναφορά προβλήματος" aria-label="Αναφορά προβλήματος">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      </button>
-      <button class="icon-btn" id="admin-reports-btn" title="Αναφορές" aria-label="Αναφορές" hidden style="position:relative;">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span id="reports-badge" class="badge-dot" hidden></span>
-      </button>
-      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-      <button class="icon-btn" id="logout-btn" title="Logout" aria-label="Logout">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </button>
     </div>
   </div>
 
   <main>
-    <div class="stats" id="admin-stats" hidden>
-      <div class="tile"><div class="lbl">Σύνολο συνταγών</div><div class="val" id="stat-total">—</div></div>
-      <div class="tile"><div class="lbl">Μέλη ομάδας</div><div class="val" id="stat-members">—</div></div>
-      <div class="tile"><div class="lbl">Προστέθηκαν (7d)</div><div class="val" id="stat-recent">—</div></div>
-    </div>
+    <div id="home-view">
+      <h1 class="home-greeting" id="home-greeting">Καλωσόρισες 👋</h1>
 
-    <div class="toolbar">
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search" type="text" placeholder="Αναζήτηση συνταγής&hellip;" autocomplete="off">
+      <div class="stats" id="admin-stats" hidden>
+        <div class="tile"><div class="lbl">Σύνολο συνταγών</div><div class="val" id="stat-total">—</div></div>
+        <div class="tile"><div class="lbl">Μέλη ομάδας</div><div class="val" id="stat-members">—</div></div>
       </div>
-      <select class="cat-select" id="cat-select">
-        <option value="">Όλες οι κατηγορίες</option>
-      </select>
-      <button class="fav-toggle-btn" id="fav-filter-btn" title="Μόνο αγαπημένα">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Αγαπημένα
-      </button>
-      <button class="addbtn" id="add-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Νέα συνταγή
-      </button>
+
+      <div class="section-title">Κατηγορίες</div>
+      <div class="cat-scroller-wrap">
+        <div class="cat-scroller" id="cat-scroller"></div>
+      </div>
+
+      <div id="recent-wrap">
+        <div class="section-title">Πρόσφατα προβλήθηκαν</div>
+        <div class="recent-scroller" id="recent-scroller"></div>
+        <div class="recent-empty" id="recent-empty">Δεν έχεις ανοίξει ακόμα καμία συνταγή — διάλεξε μια κατηγορία παραπάνω ή κάνε αναζήτηση.</div>
+      </div>
     </div>
 
-    <table>
-      <thead><tr><th>Όνομα</th><th>Κατηγορία</th><th></th></tr></thead>
-      <tbody id="recipe-list"></tbody>
-    </table>
-    <div class="empty" id="empty-state" hidden>Καμία συνταγή δεν βρέθηκε.</div>
+    <div id="search-view" hidden>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search" type="text" placeholder="Αναζήτηση συνταγής&hellip;" autocomplete="off">
+        </div>
+        <select class="cat-select" id="cat-select">
+          <option value="">Όλες οι κατηγορίες</option>
+        </select>
+        <button class="fav-toggle-btn" id="fav-filter-btn" title="Μόνο αγαπημένα">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Αγαπημένα
+        </button>
+        <button class="addbtn" id="add-btn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Νέα συνταγή
+        </button>
+      </div>
+
+      <table>
+        <thead><tr><th>Όνομα</th><th>Κατηγορία</th><th></th></tr></thead>
+        <tbody id="recipe-list"></tbody>
+      </table>
+      <div class="empty" id="empty-state" hidden>Καμία συνταγή δεν βρέθηκε.</div>
+    </div>
+
+    <div id="profile-view" hidden>
+      <div class="profile-card">
+        <span id="user-avatar"></span>
+        <div class="profile-id">
+          <div class="profile-name" id="user-email">—</div>
+        </div>
+      </div>
+
+      <button class="profile-row" id="chat-shortcut-btn" type="button">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <span class="prow-label">Chat ομάδας</span>
+        <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <button class="profile-row" id="settings-btn" type="button">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="prow-label">Ρυθμίσεις</span>
+        <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <button class="profile-row" id="report-btn" type="button">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <span class="prow-label">Αναφορά προβλήματος</span>
+        <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <button class="profile-row" id="admin-reports-btn" type="button" hidden>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="prow-label">Αναφορές<span id="reports-badge" class="badge-dot" hidden></span></span>
+        <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <button class="profile-row danger" id="logout-btn" type="button">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="prow-label">Αποσύνδεση</span>
+      </button>
+    </div>
   </main>
+
+  <button id="chat-btn" title="Chat ομάδας" aria-label="Chat ομάδας">
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  </button>
+
+  <nav id="bottom-nav">
+    <button class="bn-btn" data-tab="home" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+      Αρχική
+    </button>
+    <button class="bn-btn" data-tab="search" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Αναζήτηση
+    </button>
+    <button class="bn-btn bn-create" data-tab="create" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Νέα
+    </button>
+    <button class="bn-btn" data-tab="library" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Αγαπημένα
+    </button>
+    <button class="bn-btn" data-tab="profile" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      Προφίλ
+    </button>
+  </nav>
 </div>
 
 <!-- ==================== RECIPE DETAIL (full screen) ==================== -->
@@ -469,6 +655,9 @@
       <p class="method-text" id="rv-notes"></p>
     </div>
   </div>
+  <button id="rv-back-to-top" class="rv-back-to-top-btn" title="Επιστροφή στην αρχή της συνταγής" aria-label="Επιστροφή στην αρχή της συνταγής">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+  </button>
 </div>
 
 <!-- ==================== CHAT (full screen) ==================== -->
@@ -783,7 +972,7 @@ async function enterApp() {
   authScreen.hidden = true;
   appScreen.hidden = false;
   document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
-  document.getElementById('user-avatar').innerHTML = avatarHtml(currentProfile, 26);
+  document.getElementById('user-avatar').innerHTML = avatarHtml(currentProfile, 44);
   var badge = document.getElementById('role-badge');
   var isAdmin = currentProfile && currentProfile.role === 'admin';
   badge.textContent = isAdmin ? 'admin' : 'member';
@@ -791,11 +980,17 @@ async function enterApp() {
   document.getElementById('admin-stats').hidden = !isAdmin;
   document.getElementById('admin-reports-btn').hidden = !isAdmin;
 
+  var greetName = (currentProfile && currentProfile.nickname) || (currentUser.email || '').split('@')[0] || '';
+  document.getElementById('home-greeting').textContent = greetName ? ('Γεια σου, ' + greetName + ' 👋') : 'Καλωσόρισες 👋';
+
   var catSel = document.getElementById('cat-select');
   catSel.innerHTML = '<option value="">Όλες οι κατηγορίες</option>' +
     CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
   var fCat = document.getElementById('f-category');
   fCat.innerHTML = CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  document.getElementById('cat-scroller').innerHTML = CATEGORY_ORDER.map(function (c) {
+    return '<button type="button" class="cat-chip" data-cat="' + c + '">' + c + '</button>';
+  }).join('');
 
   await refreshFavorites();
   await refreshRecipes();
@@ -804,6 +999,7 @@ async function enterApp() {
     await refreshReportsBadge();
   }
   startHeartbeat();
+  switchTab('home');
 }
 
 async function refreshFavorites() {
@@ -831,14 +1027,14 @@ async function refreshAdminStats() {
   document.getElementById('stat-total').textContent = allRecipes.length;
   var membersRes = await sb.from('profiles').select('id', { count: 'exact', head: true });
   document.getElementById('stat-members').textContent = membersRes.count != null ? membersRes.count : '—';
-  var weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  var recentCount = allRecipes.filter(function (r) { return r.created_at && r.created_at > weekAgo; }).length;
-  document.getElementById('stat-recent').textContent = recentCount;
 }
 
 function renderList() {
   var q = document.getElementById('search').value.trim().toLowerCase();
   var cat = document.getElementById('cat-select').value;
+  document.querySelectorAll('.cat-chip').forEach(function (b) {
+    b.classList.toggle('active', b.getAttribute('data-cat') === cat);
+  });
   var isAdmin = currentProfile && currentProfile.role === 'admin';
   var filtered = allRecipes.filter(function (r) {
     if (cat && r.category !== cat) return false;
@@ -858,7 +1054,7 @@ function renderList() {
     var editBtn = isAdmin ? '<button data-action="edit" data-id="' + r.id + '" title="Edit"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' : '';
     return '<tr data-row-id="' + r.id + '" class="recipe-row">' +
       '<td><div class="r-name">' + escapeHtml(r.recipe_name) + '</div></td>' +
-      '<td class="r-cat">' + escapeHtml(r.category) + '</td>' +
+      '<td class="r-cat"><span class="cat-dot" style="background:' + categoryColor(r.category) + ';"></span>' + escapeHtml(r.category) + '</td>' +
       '<td><div class="row-actions">' + favBtn + '<button data-action="view" data-id="' + r.id + '" title="Άνοιγμα"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>' + editBtn + delBtn + '</div></td>' +
       '</tr>';
   }).join('');
@@ -876,6 +1072,115 @@ function escapeHtml(s) {
 
 document.getElementById('search').addEventListener('input', renderList);
 document.getElementById('cat-select').addEventListener('change', renderList);
+
+/* ---------- Category scroller: tap a chip to filter by that category ---------- */
+var catScroller = document.getElementById('cat-scroller');
+catScroller.addEventListener('click', function (e) {
+  var chip = e.target.closest('.cat-chip');
+  if (!chip) return;
+  var cat = chip.getAttribute('data-cat');
+  var sel = document.getElementById('cat-select');
+  sel.value = (sel.value === cat) ? '' : cat; // tap the active one again to clear the filter
+  switchTab('search'); // jump straight to the filtered results
+});
+// Let a normal mouse wheel scroll the row sideways too (touch/drag already works natively).
+catScroller.addEventListener('wheel', function (e) {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    catScroller.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
+}, { passive: false });
+
+/* ---------- A stable, cheerful color per category (no photos in this app, so
+   we use color instead) ---------- */
+function categoryColor(cat) {
+  var str = cat || '';
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+  var hue = Math.abs(hash) % 360;
+  return 'hsl(' + hue + ', 62%, 42%)';
+}
+
+/* ---------- Recently viewed (per-browser, stored locally — the app itself
+   has no "view history" table) ---------- */
+var RECENT_KEY = 'sygr_recent_viewed_v1';
+function recordRecentView(id) {
+  try {
+    var arr = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    arr = arr.filter(function (x) { return x !== id; });
+    arr.unshift(id);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, 12)));
+  } catch (e) { /* localStorage unavailable — skip silently */ }
+}
+function getRecentIds() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { return []; }
+}
+function renderRecentScroller() {
+  var ids = getRecentIds();
+  var items = ids.map(function (id) { return allRecipes.find(function (r) { return r.id === id; }); }).filter(Boolean);
+  var scroller = document.getElementById('recent-scroller');
+  var emptyEl = document.getElementById('recent-empty');
+  if (!items.length) {
+    scroller.innerHTML = '';
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+  scroller.innerHTML = items.map(function (r) {
+    var initial = (r.recipe_name || '?').charAt(0).toUpperCase();
+    return '<div class="recent-card" data-id="' + r.id + '">' +
+      '<div class="recent-card-top" style="background:' + categoryColor(r.category) + ';">' + escapeHtml(initial) + '</div>' +
+      '<div class="recent-card-name">' + escapeHtml(r.recipe_name) + '</div>' +
+      '<div class="recent-card-cat">' + escapeHtml(r.category || '') + '</div>' +
+      '</div>';
+  }).join('');
+}
+document.getElementById('recent-scroller').addEventListener('click', function (e) {
+  var card = e.target.closest('.recent-card');
+  if (!card) return;
+  var r = allRecipes.find(function (r) { return r.id === card.getAttribute('data-id'); });
+  if (r) openRecipeView(r);
+});
+document.getElementById('recent-scroller').addEventListener('wheel', function (e) {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    this.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
+}, { passive: false });
+
+/* ---------- Bottom nav: Home / Search / Create / Library / Profile ---------- */
+function setFavOnly(v) {
+  showFavoritesOnly = v;
+  document.getElementById('fav-filter-btn').classList.toggle('active', v);
+  renderList();
+}
+function switchTab(tab) {
+  var viewId = (tab === 'library') ? 'search-view' : (tab + '-view');
+  ['home-view', 'search-view', 'profile-view'].forEach(function (id) {
+    document.getElementById(id).hidden = (id !== viewId);
+  });
+  document.querySelectorAll('.bn-btn[data-tab]').forEach(function (b) {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+  });
+  if (tab === 'library') setFavOnly(true);
+  else if (tab === 'search') setFavOnly(false);
+  else if (tab === 'home') renderRecentScroller();
+  window.scrollTo(0, 0);
+}
+document.getElementById('bottom-nav').addEventListener('click', function (e) {
+  var btn = e.target.closest('.bn-btn');
+  if (!btn) return;
+  // The nav stays visible/tappable even while a recipe is open (see the
+  // #recipe-view-screen z-index note above) — jumping to another tab from
+  // there should close the recipe view first, not leave it hovering behind.
+  if (!recipeViewScreen.hidden) closeRecipeView();
+  var tab = btn.getAttribute('data-tab');
+  if (tab === 'create') { openRecipeModal(null); return; }
+  switchTab(tab);
+});
+document.getElementById('chat-shortcut-btn').addEventListener('click', function () {
+  document.getElementById('chat-btn').click();
+});
 
 document.getElementById('recipe-list').addEventListener('click', async function (e) {
   var delBtn = e.target.closest('button[data-action="delete"]');
@@ -910,6 +1215,7 @@ var rvOriginal = null;
 function openRecipeView(r) {
   if (!r) return;
   currentViewedRecipe = r;
+  recordRecentView(r.id);
   rvOriginal = {
     name: r.recipe_name,
     ingredients: (r.ingredients || []).slice(),
@@ -926,6 +1232,7 @@ function openRecipeView(r) {
   updateRvFavButton();
   recipeViewScreen.hidden = false;
   recipeViewScreen.scrollTop = 0;
+  document.getElementById('rv-back-to-top').classList.remove('visible');
   document.body.style.overflow = 'hidden';
   syncRvTopbarHeight();
   updateRvTopbarPin();
@@ -1208,6 +1515,19 @@ window.addEventListener('scroll', function () {
 });
 backToTopBtn.addEventListener('click', function () {
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* Same idea, but scoped to the recipe-detail screen: that screen scrolls
+   itself internally (overflow-y: auto on #recipe-view-screen), so the
+   window never scrolls while reading a recipe and the button above would
+   never trigger. */
+var rvBackToTopBtn = document.getElementById('rv-back-to-top');
+recipeViewScreen.addEventListener('scroll', function () {
+  if (recipeViewScreen.scrollTop > 260) rvBackToTopBtn.classList.add('visible');
+  else rvBackToTopBtn.classList.remove('visible');
+});
+rvBackToTopBtn.addEventListener('click', function () {
+  recipeViewScreen.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 /* ---------- Report a problem ---------- */
