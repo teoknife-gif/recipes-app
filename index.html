@@ -156,6 +156,13 @@
     color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; margin: 22px 0 10px;
   }
   #recent-wrap .section-title { margin-top: 26px; }
+  .recent-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .recent-title-row .section-title { margin-bottom: 10px; }
+  .recent-clear-all-btn {
+    background: none; border: none; color: var(--ink-soft); font-size: 11.5px; font-weight: 600;
+    padding: 2px 0; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .recent-clear-all-btn:hover { color: var(--danger); }
   .recent-scroller {
     display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth;
     padding: 2px 2px 10px; -webkit-overflow-scrolling: touch;
@@ -166,8 +173,15 @@
   .recent-card {
     flex: 0 0 auto; width: 128px; background: var(--tile); border: 1px solid var(--line);
     border-radius: 12px; overflow: hidden; cursor: pointer; transition: border-color .15s, transform .15s;
+    position: relative;
   }
   .recent-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .recent-card-remove {
+    position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(11,17,32,.65); border: none; color: #fff; display: flex; align-items: center;
+    justify-content: center; z-index: 1; transition: background .15s;
+  }
+  .recent-card-remove:hover { background: var(--danger); }
   .recent-card-top {
     height: 64px; display: flex; align-items: center; justify-content: center;
     color: rgba(255,255,255,.92); font-size: 24px; font-weight: 700;
@@ -517,7 +531,10 @@
       </div>
 
       <div id="recent-wrap">
-        <div class="section-title">Πρόσφατα προβλήθηκαν</div>
+        <div class="recent-title-row">
+          <div class="section-title">Πρόσφατα προβλήθηκαν</div>
+          <button type="button" id="recent-clear-all" class="recent-clear-all-btn" hidden>Καθαρισμός όλων</button>
+        </div>
         <div class="recent-scroller" id="recent-scroller"></div>
         <div class="recent-empty" id="recent-empty">Δεν έχεις ανοίξει ακόμα καμία συνταγή — διάλεξε μια κατηγορία παραπάνω ή κάνε αναζήτηση.</div>
       </div>
@@ -1104,31 +1121,49 @@ function categoryColor(cat) {
 /* ---------- Recently viewed (per-browser, stored locally — the app itself
    has no "view history" table) ---------- */
 var RECENT_KEY = 'sygr_recent_viewed_v1';
+var RECENT_LIMIT = 10;
 function recordRecentView(id) {
   try {
     var arr = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
     arr = arr.filter(function (x) { return x !== id; });
     arr.unshift(id);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, 12)));
+    localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, RECENT_LIMIT)));
   } catch (e) { /* localStorage unavailable — skip silently */ }
 }
 function getRecentIds() {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { return []; }
+}
+function removeRecentView(id) {
+  try {
+    var arr = getRecentIds().filter(function (x) { return x !== id; });
+    localStorage.setItem(RECENT_KEY, JSON.stringify(arr));
+  } catch (e) { /* localStorage unavailable — skip silently */ }
+  renderRecentScroller();
+}
+function clearAllRecentViews() {
+  try { localStorage.removeItem(RECENT_KEY); } catch (e) { /* localStorage unavailable — skip silently */ }
+  renderRecentScroller();
 }
 function renderRecentScroller() {
   var ids = getRecentIds();
   var items = ids.map(function (id) { return allRecipes.find(function (r) { return r.id === id; }); }).filter(Boolean);
   var scroller = document.getElementById('recent-scroller');
   var emptyEl = document.getElementById('recent-empty');
+  var clearAllBtn = document.getElementById('recent-clear-all');
   if (!items.length) {
     scroller.innerHTML = '';
     emptyEl.hidden = false;
+    clearAllBtn.hidden = true;
     return;
   }
   emptyEl.hidden = true;
+  clearAllBtn.hidden = false;
   scroller.innerHTML = items.map(function (r) {
     var initial = (r.recipe_name || '?').charAt(0).toUpperCase();
     return '<div class="recent-card" data-id="' + r.id + '">' +
+      '<button type="button" class="recent-card-remove" data-remove-id="' + r.id + '" title="Αφαίρεση" aria-label="Αφαίρεση από τα πρόσφατα">' +
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
       '<div class="recent-card-top" style="background:' + categoryColor(r.category) + ';">' + escapeHtml(initial) + '</div>' +
       '<div class="recent-card-name">' + escapeHtml(r.recipe_name) + '</div>' +
       '<div class="recent-card-cat">' + escapeHtml(r.category || '') + '</div>' +
@@ -1136,6 +1171,11 @@ function renderRecentScroller() {
   }).join('');
 }
 document.getElementById('recent-scroller').addEventListener('click', function (e) {
+  var removeBtn = e.target.closest('.recent-card-remove');
+  if (removeBtn) {
+    removeRecentView(removeBtn.getAttribute('data-remove-id'));
+    return;
+  }
   var card = e.target.closest('.recent-card');
   if (!card) return;
   var r = allRecipes.find(function (r) { return r.id === card.getAttribute('data-id'); });
@@ -1147,6 +1187,9 @@ document.getElementById('recent-scroller').addEventListener('wheel', function (e
     e.preventDefault();
   }
 }, { passive: false });
+document.getElementById('recent-clear-all').addEventListener('click', function () {
+  if (confirm('Καθαρισμός όλων των πρόσφατα προβεβλημένων συνταγών;')) clearAllRecentViews();
+});
 
 /* ---------- Bottom nav: Home / Search / Create / Library / Profile ---------- */
 function setFavOnly(v) {
