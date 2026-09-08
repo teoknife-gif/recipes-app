@@ -191,8 +191,9 @@
     position: fixed; inset: 0; background: var(--bg); z-index: 300; overflow-y: auto;
   }
   .rv-topbar {
-    position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line);
+    position: fixed; top: 0; left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--line);
     padding: 14px 20px; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+    will-change: transform;
   }
   .badge-dot {
     position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px;
@@ -205,7 +206,7 @@
     display: flex; align-items: center; gap: 6px;
   }
   .rv-back-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .rv-body { max-width: 760px; margin: 0 auto; padding: 30px 24px 90px; }
+  .rv-body { max-width: 760px; margin: 0 auto; padding: 76px 24px 90px; box-sizing: border-box; }
   .rv-cat { font-size: 11px; color: var(--accent); font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
   #rv-name { font-size: 25px; font-weight: 700; margin: 0 0 6px; line-height: 1.25; }
   .rv-yield { font-size: 13px; color: var(--ink-soft); margin-bottom: 26px; }
@@ -316,24 +317,56 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-brand">ΣΥΝΤΑΓΕΣ · CONTROL PANEL</div>
-    <h1 class="auth-title" id="auth-title">Σύνδεση</h1>
-    <div class="auth-error" id="auth-error" hidden></div>
-    <form id="auth-form">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="auth-email" required autocomplete="email">
+
+    <div id="auth-main-wrap">
+      <h1 class="auth-title" id="auth-title">Σύνδεση</h1>
+      <div class="auth-error" id="auth-error" hidden></div>
+      <form id="auth-form">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="auth-email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label>Κωδικός</label>
+          <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+        </div>
+        <button type="submit" class="btn-primary" id="auth-submit">Σύνδεση</button>
+      </form>
+      <div class="auth-switch">
+        <span id="switch-to-signup-wrap">Δεν έχεις λογαριασμό; <a id="switch-to-signup">Εγγραφή</a></span>
+        <span id="switch-to-login-wrap" hidden>Έχεις ήδη λογαριασμό; <a id="switch-to-login">Σύνδεση</a></span>
       </div>
-      <div class="field">
-        <label>Κωδικός</label>
-        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+      <div class="auth-switch" style="margin-top:8px;">
+        <a id="show-forgot">Ξέχασες τον κωδικό σου;</a>
       </div>
-      <button type="submit" class="btn-primary" id="auth-submit">Σύνδεση</button>
-    </form>
-    <div class="auth-switch">
-      <span id="switch-to-signup-wrap">Δεν έχεις λογαριασμό; <a id="switch-to-signup">Εγγραφή</a></span>
-      <span id="switch-to-login-wrap" hidden>Έχεις ήδη λογαριασμό; <a id="switch-to-login">Σύνδεση</a></span>
+      <div class="auth-note">Ιδιωτική εφαρμογή της ομάδας — χρειάζεται λογαριασμό για είσοδο.</div>
     </div>
-    <div class="auth-note">Ιδιωτική εφαρμογή της ομάδας — χρειάζεται λογαριασμό για είσοδο.</div>
+
+    <div id="forgot-wrap" hidden>
+      <h1 class="auth-title">Επαναφορά κωδικού</h1>
+      <div class="auth-error" id="forgot-error" hidden></div>
+      <div class="auth-note" id="forgot-success" hidden style="margin:0 0 14px;text-align:left;"></div>
+      <form id="forgot-form">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="forgot-email" required autocomplete="email">
+        </div>
+        <button type="submit" class="btn-primary" id="forgot-submit">Αποστολή link επαναφοράς</button>
+      </form>
+      <div class="auth-switch" style="margin-top:14px;"><a id="back-to-login">&larr; Πίσω στη σύνδεση</a></div>
+    </div>
+
+    <div id="recovery-wrap" hidden>
+      <h1 class="auth-title">Νέος κωδικός</h1>
+      <div class="auth-error" id="recovery-error" hidden></div>
+      <form id="recovery-form">
+        <div class="field">
+          <label>Νέος κωδικός</label>
+          <input type="password" id="recovery-password" required minlength="6" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-primary" id="recovery-submit">Αποθήκευση κωδικού</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -671,6 +704,72 @@ authForm.addEventListener('submit', async function (e) {
   }
 });
 
+/* ---------- Forgot / reset password ---------- */
+const authMainWrap = document.getElementById('auth-main-wrap');
+const forgotWrap = document.getElementById('forgot-wrap');
+const recoveryWrap = document.getElementById('recovery-wrap');
+
+function showForgotForm() {
+  authMainWrap.hidden = true;
+  recoveryWrap.hidden = true;
+  forgotWrap.hidden = false;
+  document.getElementById('forgot-error').hidden = true;
+  document.getElementById('forgot-success').hidden = true;
+  document.getElementById('forgot-form').hidden = false;
+  document.getElementById('forgot-email').value = '';
+}
+function showLoginForm() {
+  forgotWrap.hidden = true;
+  recoveryWrap.hidden = true;
+  authMainWrap.hidden = false;
+}
+document.getElementById('show-forgot').addEventListener('click', showForgotForm);
+document.getElementById('back-to-login').addEventListener('click', showLoginForm);
+
+document.getElementById('forgot-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  if (!configured) return;
+  var email = document.getElementById('forgot-email').value.trim();
+  var errEl = document.getElementById('forgot-error');
+  var okEl = document.getElementById('forgot-success');
+  errEl.hidden = true;
+  var btn = document.getElementById('forgot-submit');
+  btn.disabled = true;
+  try {
+    var redirectTo = window.location.origin + window.location.pathname;
+    var res = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    if (res.error) throw res.error;
+    document.getElementById('forgot-form').hidden = true;
+    okEl.hidden = false;
+    okEl.textContent = 'Αν υπάρχει λογαριασμός με αυτό το email, στάλθηκε μήνυμα με link επαναφοράς κωδικού. Έλεγξε τα εισερχόμενά σου (και τα spam) και άνοιξέ το από αυτή τη συσκευή.';
+  } catch (err) {
+    errEl.hidden = false;
+    errEl.textContent = err.message || 'Κάτι πήγε στραβά.';
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('recovery-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  if (!configured) return;
+  var newPass = document.getElementById('recovery-password').value;
+  var errEl = document.getElementById('recovery-error');
+  errEl.hidden = true;
+  var btn = document.getElementById('recovery-submit');
+  btn.disabled = true;
+  try {
+    var res = await sb.auth.updateUser({ password: newPass });
+    if (res.error) throw res.error;
+    document.getElementById('recovery-password').value = '';
+    // A valid recovery session now exists; onAuthStateChange (SIGNED_IN) takes it into the app.
+    showLoginForm();
+  } catch (err) {
+    errEl.hidden = false;
+    errEl.textContent = err.message || 'Κάτι πήγε στραβά.';
+  }
+  btn.disabled = false;
+});
+
 /* ---------- App shell wiring ---------- */
 const authScreen = document.getElementById('auth-screen');
 const appScreen = document.getElementById('app-screen');
@@ -828,7 +927,32 @@ function openRecipeView(r) {
   recipeViewScreen.hidden = false;
   recipeViewScreen.scrollTop = 0;
   document.body.style.overflow = 'hidden';
+  syncRvTopbarHeight();
+  updateRvTopbarPin();
 }
+/* Keeps the recipe header pinned to the top of the screen and keeps the
+   body content from sliding underneath it — both on normal scroll (it's
+   position:fixed, not sticky) and on mobile pinch-zoom, where a fixed
+   element can otherwise appear to scroll away as the visual viewport pans
+   independently of the layout viewport. */
+function syncRvTopbarHeight() {
+  var topbar = document.querySelector('.rv-topbar');
+  var body = document.querySelector('.rv-body');
+  if (!topbar || !body || recipeViewScreen.hidden) return;
+  body.style.paddingTop = (topbar.offsetHeight + 20) + 'px';
+}
+function updateRvTopbarPin() {
+  var topbar = document.querySelector('.rv-topbar');
+  if (!topbar || !window.visualViewport || recipeViewScreen.hidden) return;
+  var vv = window.visualViewport;
+  topbar.style.transform = 'translate(' + vv.offsetLeft + 'px,' + vv.offsetTop + 'px)';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateRvTopbarPin);
+  window.visualViewport.addEventListener('scroll', updateRvTopbarPin);
+}
+window.addEventListener('resize', syncRvTopbarHeight);
+window.addEventListener('orientationchange', syncRvTopbarHeight);
 function renderRvContent(data) {
   document.getElementById('rv-name').textContent = data.name;
   document.getElementById('rv-ingredients').innerHTML =
@@ -891,8 +1015,35 @@ document.getElementById('rv-fav-btn').addEventListener('click', async function (
 function closeRecipeView() {
   recipeViewScreen.hidden = true;
   document.body.style.overflow = '';
+  var topbar = document.querySelector('.rv-topbar');
+  if (topbar) topbar.style.transform = '';
 }
 document.getElementById('rv-back').addEventListener('click', closeRecipeView);
+
+/* ---------- Swipe right (from the left edge) to go back, on touch devices ---------- */
+function addSwipeBack(el, backFn) {
+  if (!el) return;
+  var startX = 0, startY = 0, tracking = false;
+  el.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = startX < 60; // only treat it as "go back" if it starts near the left edge
+  }, { passive: true });
+  el.addEventListener('touchmove', function (e) {
+    if (!tracking || e.touches.length !== 1) return;
+  }, { passive: true });
+  el.addEventListener('touchend', function (e) {
+    if (!tracking) return;
+    tracking = false;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    if (dx > 70 && Math.abs(dy) < 60) backFn();
+  }, { passive: true });
+  el.addEventListener('touchcancel', function () { tracking = false; }, { passive: true });
+}
+addSwipeBack(recipeViewScreen, closeRecipeView);
 
 /* ---------- Add/edit recipe modal ---------- */
 const recipeModal = document.getElementById('recipe-modal');
@@ -1298,6 +1449,7 @@ function closeChat() {
   if (chatOnlineTimer) { clearInterval(chatOnlineTimer); chatOnlineTimer = null; }
 }
 document.getElementById('chat-back').addEventListener('click', closeChat);
+addSwipeBack(chatScreen, closeChat);
 async function sendChatMessage() {
   var input = document.getElementById('chat-input');
   var text = input.value.trim();
@@ -1331,6 +1483,14 @@ document.getElementById('logout-btn').addEventListener('click', async function (
 /* ---------- Auth state / boot ---------- */
 if (configured) {
   sb.auth.onAuthStateChange(async function (event, session) {
+    if (event === 'PASSWORD_RECOVERY') {
+      authScreen.hidden = false;
+      appScreen.hidden = true;
+      authMainWrap.hidden = true;
+      forgotWrap.hidden = true;
+      recoveryWrap.hidden = false;
+      return;
+    }
     if (session && session.user) {
       currentUser = session.user;
       currentProfile = await loadProfile(currentUser.id);
@@ -1344,6 +1504,7 @@ if (configured) {
       stopHeartbeat();
       authScreen.hidden = false;
       appScreen.hidden = true;
+      showLoginForm();
     }
   });
 }
