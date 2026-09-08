@@ -547,16 +547,44 @@
     padding: 8px 12px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; text-align: left;
   }
   .chat-msg.own .chat-bubble { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .msg-avatar-tap, .msg-name-tap { cursor: pointer; }
+  .msg-name-tap:hover { text-decoration: underline; }
+  /* The bar sits clear of the iPhone home-indicator (safe-area inset) instead
+     of flush against the very bottom edge, and is rounder/friendlier than a
+     plain rectangle: a pill-shaped textarea plus a circular send button. */
   .chat-input-row {
-    display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line);
-    max-width: 760px; width: 100%; margin: 0 auto; flex-shrink: 0; box-sizing: border-box;
+    display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line); max-width: 760px; width: 100%; margin: 0 auto; flex-shrink: 0; box-sizing: border-box;
   }
   .chat-input-row textarea {
-    flex: 1; background: var(--tile); border: 1px solid var(--line); border-radius: 8px;
-    padding: 10px 12px; color: var(--ink); font-size: 13.5px; outline: none; resize: none; font-family: inherit;
+    flex: 1; background: var(--tile); border: 1px solid var(--line); border-radius: 22px;
+    padding: 11px 18px; color: var(--ink); font-size: 13.5px; outline: none; resize: none; font-family: inherit;
+    min-height: 22px; max-height: 120px; line-height: 1.35;
   }
   .chat-input-row textarea:focus { border-color: var(--accent); }
+  .chat-send-btn {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); border: none;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 10px rgba(34,211,238,.35);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .chat-send-btn:hover { transform: scale(1.07); }
+  .chat-send-btn:active { transform: scale(.94); }
+  .chat-send-btn:disabled { opacity: .5; }
   .chat-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 40px 20px; }
+
+  /* ---------- "Set your name" nudge (Home) ---------- */
+  .nickname-nudge {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: rgba(34,211,238,.1); border: 1px solid var(--accent); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 18px; font-size: 12.5px;
+  }
+  .nickname-nudge-text { flex: 1; color: var(--ink); }
+  .nickname-nudge-btn {
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
+    padding: 8px 13px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -630,6 +658,11 @@
   <main>
     <div id="home-view">
       <h1 class="home-greeting" id="home-greeting">Καλωσόρισες 👋</h1>
+
+      <div class="nickname-nudge" id="nickname-nudge" hidden>
+        <div class="nickname-nudge-text">Πρόσθεσε το όνομά σου, ώστε να φαίνεται σωστά στην ομάδα αντί για το email σου.</div>
+        <button type="button" id="nickname-nudge-btn" class="nickname-nudge-btn">Προσθήκη ονόματος</button>
+      </div>
 
       <div class="stats" id="admin-stats" hidden>
         <div class="tile"><div class="lbl">Σύνολο συνταγών</div><div class="val" id="stat-total">—</div></div>
@@ -871,7 +904,9 @@
   </div>
   <div class="chat-input-row">
     <textarea id="dm-chat-input" rows="1" maxlength="1000" placeholder="Γράψε ένα προσωπικό μήνυμα..."></textarea>
-    <button id="dm-chat-send" class="btn-inline-primary">Αποστολή</button>
+    <button id="dm-chat-send" class="chat-send-btn" title="Αποστολή" aria-label="Αποστολή">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+    </button>
   </div>
 </div>
 
@@ -888,8 +923,10 @@
     <div class="chat-empty">Φόρτωση...</div>
   </div>
   <div class="chat-input-row">
-    <textarea id="chat-input" rows="1" maxlength="1000" placeholder="Γράψε ένα μήνυμα στην ομάδα... (χωρίς links, αρχεία ή ακατάλληλο περιεχόμενο)"></textarea>
-    <button id="chat-send" class="btn-inline-primary">Αποστολή</button>
+    <textarea id="chat-input" rows="1" maxlength="1000" placeholder="Μήνυμα στην ομάδα (χωρίς links)..."></textarea>
+    <button id="chat-send" class="chat-send-btn" title="Αποστολή" aria-label="Αποστολή">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+    </button>
   </div>
 </div>
 
@@ -1042,6 +1079,17 @@
   </div>
 </div>
 
+<!-- ==================== VIEW PROFILE (tap someone's name/avatar) ==================== -->
+<div class="modal-overlay" id="person-profile-modal">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-header">
+      <h2>Προφίλ</h2>
+      <button class="modal-close" id="person-profile-modal-close">&times;</button>
+    </div>
+    <div id="person-profile-body" style="text-align:center;padding:4px 0 8px;"></div>
+  </div>
+</div>
+
 <script>
 /* =====================================================================
    CONFIG — fill these in once your Supabase project exists
@@ -1090,7 +1138,13 @@ let profilesById = {};
 /* ---------- Avatar helper (used in topbar, chat, members lists) ---------- */
 function displayName(profile) {
   if (!profile) return '';
-  return profile.nickname || profile.email || '';
+  if (profile.nickname) return profile.nickname;
+  // No nickname set yet — show the part before "@" rather than the full
+  // email address, so a raw email never appears as someone's "name" in
+  // chat/DMs/lists. The nickname-nudge banner on Home encourages everyone
+  // to set a real name; the full email is only shown via openPersonProfile().
+  if (profile.email) return profile.email.split('@')[0];
+  return '';
 }
 function avatarHtml(profile, size) {
   size = size || 26;
@@ -1103,6 +1157,28 @@ function avatarHtml(profile, size) {
   var fontSize = Math.round(size * 0.42);
   return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:' + radius + 'px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:700;flex-shrink:0;">' + escapeHtml(initial) + '</div>';
 }
+
+/* ---------- View someone's profile (tap their name/avatar in chat, DMs,
+   or the members list) — this is the only place a teammate's actual email
+   is shown; everywhere else only their name (or, until they set one, the
+   part of their email before "@") is displayed. ---------- */
+var personProfileModal = document.getElementById('person-profile-modal');
+async function openPersonProfile(userId) {
+  if (!userId) return;
+  await ensureProfileCached(userId);
+  var p = profilesById[userId] || {};
+  var isSelf = userId === currentUser.id;
+  var roleLabel = p.role === 'admin' ? 'Admin' : 'Μέλος';
+  document.getElementById('person-profile-body').innerHTML =
+    '<div style="display:flex;justify-content:center;margin-bottom:10px;">' + avatarHtml(p, 64) + '</div>' +
+    '<div style="font-size:16px;font-weight:700;">' + escapeHtml(displayName(p) || 'Χρήστης') + '</div>' +
+    '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">' + escapeHtml(p.email || '') + '</div>' +
+    '<div style="margin-top:10px;"><span class="role-badge ' + (p.role || 'member') + '">' + roleLabel + '</span></div>' +
+    (isSelf ? '<div style="font-size:11.5px;color:var(--ink-soft);margin-top:14px;">Αυτό είσαι εσύ — άλλαξε όνομα ή φωτογραφία από τις Ρυθμίσεις.</div>' : '');
+  personProfileModal.classList.add('visible');
+}
+document.getElementById('person-profile-modal-close').addEventListener('click', function () { personProfileModal.classList.remove('visible'); });
+personProfileModal.addEventListener('click', function (e) { if (e.target === personProfileModal) personProfileModal.classList.remove('visible'); });
 
 /* ---------- Auth screen wiring ---------- */
 let mode = 'login'; // 'login' | 'signup'
@@ -1243,6 +1319,7 @@ async function enterApp() {
 
   var greetName = (currentProfile && currentProfile.nickname) || (currentUser.email || '').split('@')[0] || '';
   document.getElementById('home-greeting').textContent = greetName ? ('Γεια σου, ' + greetName + ' 👋') : 'Καλωσόρισες 👋';
+  document.getElementById('nickname-nudge').hidden = !!(currentProfile && currentProfile.nickname);
 
   var catSel = document.getElementById('cat-select');
   catSel.innerHTML = '<option value="">Όλες οι κατηγορίες</option>' +
@@ -2019,7 +2096,7 @@ document.getElementById('recipe-form').addEventListener('submit', async function
 
 /* ---------- Settings modal ---------- */
 const settingsModal = document.getElementById('settings-modal');
-document.getElementById('settings-btn').addEventListener('click', async function () {
+async function openSettingsModal(focusNickname) {
   document.getElementById('share-link').value = window.location.href;
   var isAdmin = currentProfile && currentProfile.role === 'admin';
   document.getElementById('settings-account-info').innerHTML =
@@ -2030,7 +2107,16 @@ document.getElementById('settings-btn').addEventListener('click', async function
   membersSection.hidden = !isAdmin;
   if (isAdmin) await loadMembersList();
   settingsModal.classList.add('visible');
-});
+  if (focusNickname) {
+    setTimeout(function () {
+      var input = document.getElementById('nickname-input');
+      input.focus();
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+  }
+}
+document.getElementById('settings-btn').addEventListener('click', function () { openSettingsModal(false); });
+document.getElementById('nickname-nudge-btn').addEventListener('click', function () { openSettingsModal(true); });
 
 async function loadMembersList() {
   var res = await sb.from('profiles').select('id, email, role, nickname, avatar_url, last_seen, created_at').order('created_at');
@@ -2039,13 +2125,15 @@ async function loadMembersList() {
     var removePhotoBtn = (m.avatar_url && m.id !== currentUser.id)
       ? '<button data-action="remove-avatar" data-id="' + m.id + '" class="btn-secondary" style="font-size:10.5px;padding:4px 8px;margin-left:8px;">Αφαίρεση φωτό</button>'
       : '';
-    return '<div class="member-row"><span style="display:flex;align-items:center;gap:8px;">' + avatarHtml(m, 22) +
+    return '<div class="member-row"><span class="msg-avatar-tap" data-user-id="' + m.id + '" style="display:flex;align-items:center;gap:8px;">' + avatarHtml(m, 22) +
       (online ? '<span class="chat-online"><span class="dot"></span></span>' : '') +
       escapeHtml(displayName(m)) + '</span><span style="display:flex;align-items:center;">' +
       '<span class="role-badge ' + m.role + '">' + m.role + '</span>' + removePhotoBtn + '</span></div>';
   }).join('');
 }
 document.getElementById('members-list').addEventListener('click', async function (e) {
+  var who = e.target.closest('.msg-avatar-tap');
+  if (who) { openPersonProfile(who.getAttribute('data-user-id')); return; }
   var btn = e.target.closest('button[data-action="remove-avatar"]');
   if (!btn) return;
   if (!confirm('Αφαίρεση της φωτογραφίας αυτού του χρήστη;')) return;
@@ -2095,6 +2183,7 @@ document.getElementById('nickname-save-btn').addEventListener('click', async fun
   }
   currentProfile.nickname = val || null;
   document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
+  document.getElementById('nickname-nudge').hidden = !!currentProfile.nickname;
   var btn = document.getElementById('nickname-save-btn');
   var orig = btn.textContent;
   btn.textContent = 'Έγινε!';
@@ -2305,15 +2394,17 @@ function renderChatMessages() {
       ? '<button data-action="delete-msg" data-id="' + m.id + '" title="Διαγραφή" style="background:none;border:none;color:var(--ink-soft);font-size:10.5px;padding:2px 4px;margin-left:6px;">&times;</button>'
       : '';
     return '<div class="chat-msg' + (own ? ' own' : '') + '" data-msg-id="' + m.id + '">' +
-      avatarHtml(profile, 30) +
+      '<span class="msg-avatar-tap" data-user-id="' + m.sender_id + '">' + avatarHtml(profile, 30) + '</span>' +
       '<div class="chat-msg-body">' +
-      '<div class="chat-msg-meta">' + escapeHtml(displayName(profile) || 'Χρήστης') + ' &middot; ' + when + delBtn + '</div>' +
+      '<div class="chat-msg-meta"><span class="msg-name-tap" data-user-id="' + m.sender_id + '">' + escapeHtml(displayName(profile) || 'Χρήστης') + '</span> &middot; ' + when + delBtn + '</div>' +
       '<div class="chat-bubble">' + escapeHtml(m.message) + '</div>' +
       '</div></div>';
   }).join('');
   body.scrollTop = body.scrollHeight;
 }
 document.getElementById('chat-body').addEventListener('click', async function (e) {
+  var who = e.target.closest('.msg-avatar-tap, .msg-name-tap');
+  if (who) { openPersonProfile(who.getAttribute('data-user-id')); return; }
   var btn = e.target.closest('button[data-action="delete-msg"]');
   if (!btn) return;
   if (!confirm('Διαγραφή αυτού του μηνύματος;')) return;
@@ -2491,7 +2582,7 @@ function renderDmConversationList() {
       ? '<div class="dm-convo-unread-count">' + (c.unreadCount > 99 ? '99+' : c.unreadCount) + '</div>'
       : '';
     return '<div class="dm-convo-row" data-other-id="' + c.otherId + '">' +
-      avatarHtml(profile, 42) +
+      '<span class="msg-avatar-tap" data-user-id="' + c.otherId + '">' + avatarHtml(profile, 42) + '</span>' +
       '<div class="dm-convo-info">' +
       '<div class="dm-convo-name">' + escapeHtml(name) + '</div>' +
       '<div class="dm-convo-snippet' + (c.unreadCount > 0 ? ' unread' : '') + '">' + escapeHtml(c.lastMessage) + '</div>' +
@@ -2515,6 +2606,8 @@ document.getElementById('dm-shortcut-btn').addEventListener('click', openDmList)
 document.getElementById('dm-list-back').addEventListener('click', closeDmList);
 addSwipeBack(dmListScreen, closeDmList);
 document.getElementById('dm-convo-list').addEventListener('click', function (e) {
+  var who = e.target.closest('.msg-avatar-tap');
+  if (who) { openPersonProfile(who.getAttribute('data-user-id')); return; }
   var row = e.target.closest('.dm-convo-row');
   if (row) openDmChat(row.getAttribute('data-other-id'));
 });
@@ -2558,8 +2651,10 @@ async function openDmChat(otherId) {
   currentDmOtherId = otherId;
   await ensureProfileCached(otherId);
   var profile = profilesById[otherId];
-  document.getElementById('dm-chat-header').innerHTML = avatarHtml(profile, 30) +
+  var dmChatHeaderEl = document.getElementById('dm-chat-header');
+  dmChatHeaderEl.innerHTML = avatarHtml(profile, 30) +
     '<span style="font-size:14px;font-weight:700;">' + escapeHtml(displayName(profile) || 'Χρήστης') + '</span>';
+  dmChatHeaderEl.setAttribute('data-user-id', otherId);
   dmListScreen.hidden = true;
   dmChatScreen.hidden = false;
   document.body.style.overflow = 'hidden';
@@ -2575,6 +2670,11 @@ function closeDmChat() {
 }
 document.getElementById('dm-chat-back').addEventListener('click', closeDmChat);
 addSwipeBack(dmChatScreen, closeDmChat);
+document.getElementById('dm-chat-header').style.cursor = 'pointer';
+document.getElementById('dm-chat-header').addEventListener('click', function () {
+  var uid = this.getAttribute('data-user-id');
+  if (uid) openPersonProfile(uid);
+});
 
 async function sendDmMessage() {
   var input = document.getElementById('dm-chat-input');
