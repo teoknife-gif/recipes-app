@@ -1492,6 +1492,12 @@ async function toggleFavorite(recipeId) {
 async function refreshRecipes() {
   var res = await sb.from('recipes').select('*').order('recipe_name');
   allRecipes = res.data || [];
+  // Keep the "Σύνολο συνταγών" stat tile in sync every time the list is
+  // refreshed (add, edit, delete, or the initial boot) — it used to only
+  // get set once, in refreshAdminStats() at boot, so adding/deleting a
+  // recipe afterwards left it showing the old number until next login.
+  var statTotal = document.getElementById('stat-total');
+  if (statTotal) statTotal.textContent = allRecipes.length;
   renderList();
 }
 
