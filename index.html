@@ -700,7 +700,7 @@
       </div>
 
       <div id="lists-wrap">
-        <div class="section-title">Οι λίστες μου</div>
+        <div class="section-title">Λίστες ομάδας</div>
         <div class="lists-scroller" id="lists-scroller"></div>
       </div>
 
@@ -904,12 +904,17 @@
       Πίσω
     </button>
     <div class="lv-topbar-actions">
+      <button id="dm-archive-toggle-btn" class="lv-icon-btn" title="Αρχειοθετημένα" aria-label="Αρχειοθετημένα" style="position:relative;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        <span id="dm-archive-count" class="dm-convo-unread-count" style="position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;font-size:9px;padding:0 4px;" hidden></span>
+      </button>
       <button id="dm-new-btn" class="lv-icon-btn" title="Νέο μήνυμα" aria-label="Νέο μήνυμα">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
   </div>
   <div class="lv-body">
+    <div id="dm-list-mode-label" class="lv-count" hidden>Αρχειοθετημένα</div>
     <div id="dm-convo-list"></div>
     <div class="dm-list-empty" id="dm-list-empty" hidden>Δεν έχεις μηνύματα ακόμα — πάτησε το + για να ξεκινήσεις μια συζήτηση με κάποιον συνάδελφο.</div>
   </div>
@@ -2883,6 +2888,9 @@ var dmChannel = null;
 // person's own view without touching the other person's copy or the
 // messages themselves.
 var dmThreadState = {};
+var dmArchivedConversations = [];
+var dmListMode = 'active'; // 'active' | 'archived' — which list #dm-convo-list is currently showing
+var dmThreadStateAvailable = true; // false once we've seen dm_thread_state error (e.g. table not created yet)
 var dmListScreen = document.getElementById('dm-list-screen');
 var dmChatScreen = document.getElementById('dm-chat-screen');
 
@@ -2913,28 +2921,55 @@ async function refreshDmConversations() {
     if (m.recipient_id === me && !m.read_at) map[otherId].unreadCount++;
   });
   var tsRes = await sb.from('dm_thread_state').select('*').eq('user_id', me);
+  if (tsRes.error) {
+    // Most likely cause: add_dm_thread_state.sql hasn't been run in
+    // Supabase yet, so this table doesn't exist — mute/archive/delete on a
+    // conversation would otherwise silently do nothing with no clue why.
+    console.warn('dm_thread_state unavailable:', tsRes.error.message);
+    dmThreadStateAvailable = false;
+  } else {
+    dmThreadStateAvailable = true;
+  }
   dmThreadState = {};
   (tsRes.data || []).forEach(function (r) { dmThreadState[r.other_id] = r; });
-  // A conversation someone deleted/archived from their own list reappears
-  // there on its own once a newer message arrives — same behaviour as
-  // Messages/WhatsApp — rather than being hidden forever.
-  dmConversations = Object.keys(map).map(function (k) { return map[k]; })
-    .filter(function (c) {
-      var st = dmThreadState[c.otherId];
-      if (!st) return true;
-      var lastAt = new Date(c.lastAt).getTime();
-      if (st.deleted_at && new Date(st.deleted_at).getTime() >= lastAt) return false;
-      if (st.archived_at && new Date(st.archived_at).getTime() >= lastAt) return false;
-      return true;
-    })
+  // Split into "active" and "archived" the same way as "deleted": a
+  // conversation someone archived/deleted from their own list reappears
+  // there on its own once a NEWER message arrives — same behaviour as
+  // Messages/WhatsApp — rather than being hidden forever, so this compares
+  // each timestamp against the conversation's own last-message time.
+  var all = Object.keys(map).map(function (k) { return map[k]; })
     .sort(function (a, b) { return new Date(b.lastAt) - new Date(a.lastAt); });
+  dmConversations = all.filter(function (c) {
+    var st = dmThreadState[c.otherId];
+    if (!st) return true;
+    var lastAt = new Date(c.lastAt).getTime();
+    if (st.deleted_at && new Date(st.deleted_at).getTime() >= lastAt) return false;
+    if (st.archived_at && new Date(st.archived_at).getTime() >= lastAt) return false;
+    return true;
+  });
+  dmArchivedConversations = all.filter(function (c) {
+    var st = dmThreadState[c.otherId];
+    if (!st) return false;
+    var lastAt = new Date(c.lastAt).getTime();
+    if (st.deleted_at && new Date(st.deleted_at).getTime() >= lastAt) return false;
+    return !!(st.archived_at && new Date(st.archived_at).getTime() >= lastAt);
+  });
   dmTotalUnread = dmConversations.reduce(function (sum, c) { return sum + c.unreadCount; }, 0);
-  var missing = dmConversations.map(function (c) { return c.otherId; }).filter(function (id) { return !profilesById[id]; });
+  var missing = all.map(function (c) { return c.otherId; }).filter(function (id) { return !profilesById[id]; });
   if (missing.length) {
     var pres = await sb.from('profiles').select('id, email, nickname, avatar_url').in('id', missing);
     (pres.data || []).forEach(function (p) { profilesById[p.id] = p; });
   }
   renderDmBadge();
+  var archCountEl = document.getElementById('dm-archive-count');
+  if (archCountEl) {
+    if (dmArchivedConversations.length) {
+      archCountEl.hidden = false;
+      archCountEl.textContent = dmArchivedConversations.length > 99 ? '99+' : dmArchivedConversations.length;
+    } else {
+      archCountEl.hidden = true;
+    }
+  }
   if (!dmListScreen.hidden) renderDmConversationList();
 }
 
@@ -2962,13 +2997,22 @@ function formatDmTime(iso) {
 function renderDmConversationList() {
   var listEl = document.getElementById('dm-convo-list');
   var emptyEl = document.getElementById('dm-list-empty');
-  if (!dmConversations.length) {
+  var modeLabel = document.getElementById('dm-list-mode-label');
+  var archiveBtn = document.getElementById('dm-archive-toggle-btn');
+  var archived = dmListMode === 'archived';
+  var items = archived ? dmArchivedConversations : dmConversations;
+  modeLabel.hidden = !archived;
+  if (archiveBtn) archiveBtn.title = archived ? 'Ενεργές συνομιλίες' : 'Αρχειοθετημένα';
+  if (!items.length) {
     listEl.innerHTML = '';
     emptyEl.hidden = false;
+    emptyEl.textContent = archived
+      ? 'Δεν έχεις αρχειοθετημένες συνομιλίες.'
+      : 'Δεν έχεις μηνύματα ακόμα — πάτησε το + για να ξεκινήσεις μια συζήτηση με κάποιον συνάδελφο.';
     return;
   }
   emptyEl.hidden = true;
-  listEl.innerHTML = dmConversations.map(function (c) {
+  listEl.innerHTML = items.map(function (c) {
     var profile = profilesById[c.otherId];
     var name = displayName(profile) || 'Χρήστης';
     var unreadHtml = c.unreadCount > 0
@@ -2976,10 +3020,15 @@ function renderDmConversationList() {
       : '';
     var st = dmThreadState[c.otherId];
     var isMuted = !!(st && st.muted);
+    // In the archived view, the middle action button restores the
+    // conversation to the active list instead of archiving it again.
+    var middleBtn = archived
+      ? '<button type="button" class="dm-convo-action-btn archive" data-action="unarchive" data-other-id="' + c.otherId + '"><span class="icon">📤</span><span>Επαναφορά</span></button>'
+      : '<button type="button" class="dm-convo-action-btn archive" data-action="archive" data-other-id="' + c.otherId + '"><span class="icon">📥</span><span>Αρχείο</span></button>';
     return '<div class="dm-convo-wrap">' +
       '<div class="dm-convo-actions">' +
       '<button type="button" class="dm-convo-action-btn mute" data-action="mute" data-other-id="' + c.otherId + '"><span class="icon">' + (isMuted ? '🔔' : '🔕') + '</span><span>' + (isMuted ? 'Ενεργό' : 'Σίγαση') + '</span></button>' +
-      '<button type="button" class="dm-convo-action-btn archive" data-action="archive" data-other-id="' + c.otherId + '"><span class="icon">📥</span><span>Αρχείο</span></button>' +
+      middleBtn +
       '<button type="button" class="dm-convo-action-btn delete" data-action="delete" data-other-id="' + c.otherId + '"><span class="icon">🗑️</span><span>Διαγραφή</span></button>' +
       '</div>' +
       '<div class="dm-convo-row" data-other-id="' + c.otherId + '">' +
@@ -2995,6 +3044,7 @@ function renderDmConversationList() {
 }
 
 async function openDmList() {
+  dmListMode = 'active';
   dmListScreen.hidden = false;
   lockBodyScroll();
   await refreshDmConversations();
@@ -3004,31 +3054,50 @@ function closeDmList() {
   dmListScreen.hidden = true;
   unlockBodyScroll();
 }
+// Πίσω (and the whole-screen swipe-back gesture) leaves the archived view
+// back to the normal conversation list first, instead of closing straight
+// past it — only closes the screen outright once already on the active list.
+function handleDmListBack() {
+  if (dmListMode === 'archived') {
+    dmListMode = 'active';
+    renderDmConversationList();
+    return;
+  }
+  closeDmList();
+}
 document.getElementById('dm-shortcut-btn').addEventListener('click', openDmList);
-document.getElementById('dm-list-back').addEventListener('click', closeDmList);
-addSwipeBack(dmListScreen, closeDmList);
+document.getElementById('dm-list-back').addEventListener('click', handleDmListBack);
+addSwipeBack(dmListScreen, handleDmListBack);
+document.getElementById('dm-archive-toggle-btn').addEventListener('click', function () {
+  dmListMode = dmListMode === 'archived' ? 'active' : 'archived';
+  renderDmConversationList();
+});
 
 async function handleDmThreadAction(otherId, action) {
   var me = currentUser.id;
   var now = new Date().toISOString();
+  var payload = { user_id: me, other_id: otherId, updated_at: now };
   if (action === 'mute') {
     var st = dmThreadState[otherId];
-    var next = !(st && st.muted);
-    await sb.from('dm_thread_state').upsert(
-      { user_id: me, other_id: otherId, muted: next, updated_at: now },
-      { onConflict: 'user_id,other_id' }
-    );
+    payload.muted = !(st && st.muted);
   } else if (action === 'archive') {
-    await sb.from('dm_thread_state').upsert(
-      { user_id: me, other_id: otherId, archived_at: now, updated_at: now },
-      { onConflict: 'user_id,other_id' }
-    );
+    payload.archived_at = now;
+  } else if (action === 'unarchive') {
+    payload.archived_at = null;
   } else if (action === 'delete') {
     if (!confirm('Αφαίρεση αυτής της συνομιλίας από τη λίστα σου; Αν σου ξαναστείλει μήνυμα, θα ξαναφανεί.')) return;
-    await sb.from('dm_thread_state').upsert(
-      { user_id: me, other_id: otherId, deleted_at: now, updated_at: now },
-      { onConflict: 'user_id,other_id' }
-    );
+    payload.deleted_at = now;
+  } else {
+    return;
+  }
+  var res = await sb.from('dm_thread_state').upsert(payload, { onConflict: 'user_id,other_id' }).select();
+  if (res.error) {
+    // Surfacing this is the whole point of checking it: without it, mute/
+    // archive/delete looks like it silently does nothing — most likely
+    // cause is add_dm_thread_state.sql not having been run in Supabase yet.
+    alert('Δεν ολοκληρώθηκε η ενέργεια: ' + res.error.message +
+      (dmThreadStateAvailable ? '' : '\n\n(Πιθανή αιτία: το add_dm_thread_state.sql δεν έχει τρέξει ακόμα στο Supabase.)'));
+    return;
   }
   await refreshDmConversations();
   renderDmConversationList();
