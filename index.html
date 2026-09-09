@@ -1490,8 +1490,24 @@ async function toggleFavorite(recipeId) {
 }
 
 async function refreshRecipes() {
-  var res = await sb.from('recipes').select('*').order('recipe_name');
-  allRecipes = res.data || [];
+  // Supabase/PostgREST caps a single request at its configured max-rows
+  // (commonly 1000), so a plain .select('*') silently truncates once the
+  // archive grows past that — the list (and the stat tile, which used to
+  // read allRecipes.length) would then stop growing even though new rows
+  // keep getting added in the database. Page through with .range() so we
+  // always load every row, however many there are.
+  var all = [];
+  var page = 1000;
+  var from = 0;
+  while (true) {
+    var res = await sb.from('recipes').select('*').order('recipe_name').range(from, from + page - 1);
+    if (res.error) { console.error('refreshRecipes error', res.error); break; }
+    var rows = res.data || [];
+    all = all.concat(rows);
+    if (rows.length < page) break;
+    from += page;
+  }
+  allRecipes = all;
   // Keep the "Σύνολο συνταγών" stat tile in sync every time the list is
   // refreshed (add, edit, delete, or the initial boot) — it used to only
   // get set once, in refreshAdminStats() at boot, so adding/deleting a
