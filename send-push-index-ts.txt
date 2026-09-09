@@ -1,0 +1,133 @@
+// Supabase Edge Function: send-push
+//
+// Triggered by a Database Webhook on INSERT into public.messages (team
+// chat) and public.dm_messages (private messages). Looks up who should be
+// notified, finds their registered push subscriptions, and sends each one
+// a real Web Push notification via VAPID.
+//
+// Deploy (see PUSH_SETUP.md for the full walkthrough):
+//   supabase functions deploy send-push --no-verify-jwt
+//
+// Secrets this function needs (supabase secrets set NAME=value):
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (e.g. mailto:you@example.com)
+//   WEBHOOK_SECRET   (any random string you choose — must match the header
+//                      you configure on the Database Webhook, see below)
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically by
+// the Supabase platform — you do not set those yourself.
+
+import webpush from "npm:web-push@3.6.7";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
+const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
+const vapidSubject = Deno.env.get("VAPID_SUBJECT")!;
+const webhookSecret = Deno.env.get("WEBHOOK_SECRET")!;
+
+webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
+const sb = createClient(supabaseUrl, serviceRoleKey);
+
+function displayName(profile: { nickname?: string | null; email?: string | null } | null) {
+  if (!profile) return "Κάποιος";
+  if (profile.nickname) return profile.nickname;
+  if (profile.email) return profile.email.split("@")[0];
+  return "Κάποιος";
+}
+
+Deno.serve(async (req) => {
+  // Only the Database Webhook (which we configure to send this header)
+  // may call this function — it's deployed with --no-verify-jwt so it has
+  // no other gate, and without this check anyone with the URL could send
+  // arbitrary "new message" pushes to the whole team.
+  if (req.headers.get("x-webhook-secret") !== webhookSecret) {
+    return new Response("forbidden", { status: 403 });
+  }
+
+  let payload: any;
+  try {
+    payload = await req.json();
+  } catch {
+    return new Response("bad request", { status: 400 });
+  }
+
+  const table = payload.table;
+  const record = payload.record;
+  if (!record) return new Response("ok", { status: 200 });
+
+  const senderId: string = record.sender_id;
+  const bodyText: string = String(record.message || "").slice(0, 140);
+
+  let recipientIds: string[] = [];
+  if (table === "messages") {
+    // Team chat: notify every other signed-in member.
+    const { data: profiles } = await sb.from("profiles").select("id");
+    recipientIds = (profiles || []).map((p: any) => p.id).filter((id: string) => id !== senderId);
+  } else if (table === "dm_messages") {
+    recipientIds = [record.recipient_id];
+    // Skip the push entirely if the recipient has muted this sender's
+    // thread from their conversation list (dm_thread_state.muted).
+    const { data: threadState } = await sb
+      .from("dm_thread_state")
+      .select("muted")
+      .eq("user_id", record.recipient_id)
+      .eq("other_id", senderId)
+      .maybeSingle();
+    if (threadState && threadState.muted) recipientIds = [];
+  } else {
+    return new Response("ignored", { status: 200 });
+  }
+  if (!recipientIds.length) return new Response("ok", { status: 200 });
+
+  const { data: senderProfile } = await sb
+    .from("profiles")
+    .select("nickname, email")
+    .eq("id", senderId)
+    .single();
+  const senderName = displayName(senderProfile);
+  const title = table === "messages" ? senderName + " (ομαδικό)" : senderName;
+
+  const { data: subs } = await sb
+    .from("push_subscriptions")
+    .select("*")
+    .in("user_id", recipientIds);
+
+  // Deep-link straight to the conversation the notification is about:
+  // the team chat, or the specific person's DM thread. sw.js reads this
+  // url when the notification is tapped. The tag groups notifications so
+  // a second message from the same place (or same DM sender) replaces
+  // the earlier one instead of piling up.
+  const url = table === "messages" ? "./?open=chat" : "./?open=dm&with=" + senderId;
+  const tag = table === "messages" ? "chat" : "dm-" + senderId;
+
+  const notificationJson = JSON.stringify({
+    title,
+    body: bodyText,
+    url,
+    tag,
+  });
+
+  const results = await Promise.allSettled(
+    (subs || []).map((sub: any) =>
+      webpush
+        .sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          notificationJson,
+        )
+        .catch(async (err: any) => {
+          // 404/410 means the browser dropped this subscription (uninstalled,
+          // cleared site data, etc.) — clean it up so we stop trying it.
+          if (err && (err.statusCode === 404 || err.statusCode === 410)) {
+            await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          }
+          throw err;
+        }),
+    ),
+  );
+
+  return new Response(JSON.stringify({ recipients: recipientIds.length, subscriptions: results.length }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+});
