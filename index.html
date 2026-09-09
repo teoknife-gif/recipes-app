@@ -2695,7 +2695,26 @@ document.getElementById('chat-body').addEventListener('click', async function (e
   var btn = e.target.closest('button[data-action="delete-msg"]');
   if (!btn) return;
   if (!confirm('Διαγραφή αυτού του μηνύματος;')) return;
-  await sb.from('messages').delete().eq('id', btn.getAttribute('data-id'));
+  var id = btn.getAttribute('data-id');
+  btn.disabled = true;
+  var res = await sb.from('messages').delete().eq('id', id).select();
+  if (res.error) {
+    alert('Δεν ήταν δυνατή η διαγραφή: ' + res.error.message);
+    btn.disabled = false;
+    return;
+  }
+  if (!res.data || !res.data.length) {
+    // Nothing was actually deleted (most likely: not allowed to delete this
+    // message) — RLS silently returns zero rows instead of an error, so
+    // without this check the button looked like it did nothing.
+    alert('Δεν επιτρέπεται η διαγραφή αυτού του μηνύματος.');
+    btn.disabled = false;
+    return;
+  }
+  // Remove it from view right away instead of waiting on the realtime
+  // DELETE event — makes the button feel instant and still works correctly
+  // if realtime is slow or briefly disconnected.
+  removeChatMessage(id);
 });
 function removeChatMessage(id) {
   chatMessages = chatMessages.filter(function (m) { return m.id !== id; });
