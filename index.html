@@ -629,17 +629,6 @@
   .chat-send-btn:disabled { opacity: .5; }
   .chat-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 40px 20px; }
 
-  /* ---------- "Set your name" nudge (Home) ---------- */
-  .nickname-nudge {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    background: rgba(34,211,238,.1); border: 1px solid var(--accent); border-radius: 12px;
-    padding: 12px 14px; margin-bottom: 18px; font-size: 12.5px;
-  }
-  .nickname-nudge-text { flex: 1; color: var(--ink); }
-  .nickname-nudge-btn {
-    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 8px;
-    padding: 8px 13px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
-  }
 </style>
 </head>
 <body>
@@ -705,6 +694,20 @@
         <button type="submit" class="btn-primary" id="recovery-submit">Αποθήκευση κωδικού</button>
       </form>
     </div>
+
+    <div id="nickname-required-wrap" hidden>
+      <h1 class="auth-title">Πώς σε λένε;</h1>
+      <div class="auth-error" id="nickname-required-error" hidden></div>
+      <div class="auth-note" style="margin:0 0 14px;text-align:left;">Πριν συνεχίσεις, βάλε το όνομά σου — έτσι θα εμφανίζεται σωστά στην ομάδα αντί για το email σου. Χρειάζεται μόνο μία φορά.</div>
+      <form id="nickname-required-form">
+        <div class="field">
+          <label>Όνομα</label>
+          <input type="text" id="nickname-required-input" maxlength="30" required placeholder="π.χ. Τέο" autocomplete="nickname">
+        </div>
+        <button type="submit" class="btn-primary" id="nickname-required-submit">Συνέχεια</button>
+      </form>
+      <div class="auth-switch" style="margin-top:14px;"><a id="nickname-required-logout">Αποσύνδεση</a></div>
+    </div>
   </div>
 </div>
 
@@ -720,11 +723,6 @@
   <main>
     <div id="home-view">
       <h1 class="home-greeting" id="home-greeting">Καλωσόρισες 👋</h1>
-
-      <div class="nickname-nudge" id="nickname-nudge" hidden>
-        <div class="nickname-nudge-text">Πρόσθεσε το όνομά σου, ώστε να φαίνεται σωστά στην ομάδα αντί για το email σου.</div>
-        <button type="button" id="nickname-nudge-btn" class="nickname-nudge-btn">Προσθήκη ονόματος</button>
-      </div>
 
       <div class="stats" id="admin-stats" hidden>
         <div class="tile"><div class="lbl">Σύνολο συνταγών</div><div class="val" id="stat-total">—</div></div>
@@ -1307,8 +1305,11 @@ function displayName(profile) {
   if (profile.nickname) return profile.nickname;
   // No nickname set yet — show the part before "@" rather than the full
   // email address, so a raw email never appears as someone's "name" in
-  // chat/DMs/lists. The nickname-nudge banner on Home encourages everyone
-  // to set a real name; the full email is only shown via openPersonProfile().
+  // chat/DMs/lists. Nicknames are mandatory going forward (the sign-in
+  // gate in enterApp() blocks anyone without one), but an existing member
+  // who hasn't signed back in since that change may still be missing one
+  // for a little while — this fallback covers that gap; the full email is
+  // only ever shown via openPersonProfile().
   if (profile.email) return profile.email.split('@')[0];
   return '';
 }
@@ -1412,10 +1413,12 @@ authForm.addEventListener('submit', async function (e) {
 const authMainWrap = document.getElementById('auth-main-wrap');
 const forgotWrap = document.getElementById('forgot-wrap');
 const recoveryWrap = document.getElementById('recovery-wrap');
+const nicknameRequiredWrap = document.getElementById('nickname-required-wrap');
 
 function showForgotForm() {
   authMainWrap.hidden = true;
   recoveryWrap.hidden = true;
+  nicknameRequiredWrap.hidden = true;
   forgotWrap.hidden = false;
   document.getElementById('forgot-error').hidden = true;
   document.getElementById('forgot-success').hidden = true;
@@ -1425,10 +1428,46 @@ function showForgotForm() {
 function showLoginForm() {
   forgotWrap.hidden = true;
   recoveryWrap.hidden = true;
+  nicknameRequiredWrap.hidden = true;
   authMainWrap.hidden = false;
+}
+/* Mandatory nickname gate: shown instead of the normal app screen right
+   after sign-in whenever this profile has no nickname yet (see enterApp()).
+   Lives inside the auth-card, same as the forgot/recovery screens, so it
+   gets the same centered full-screen treatment with no way to skip past it
+   other than signing back out. */
+function showNicknameRequiredForm() {
+  authScreen.hidden = false;
+  authMainWrap.hidden = true;
+  forgotWrap.hidden = true;
+  recoveryWrap.hidden = true;
+  nicknameRequiredWrap.hidden = false;
+  document.getElementById('nickname-required-error').hidden = true;
+  document.getElementById('nickname-required-input').value = '';
 }
 document.getElementById('show-forgot').addEventListener('click', showForgotForm);
 document.getElementById('back-to-login').addEventListener('click', showLoginForm);
+document.getElementById('nickname-required-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var val = document.getElementById('nickname-required-input').value.trim();
+  var errEl = document.getElementById('nickname-required-error');
+  errEl.hidden = true;
+  if (!val) return;
+  var submitBtn = document.getElementById('nickname-required-submit');
+  submitBtn.disabled = true;
+  var res = await sb.from('profiles').update({ nickname: val }).eq('id', currentUser.id);
+  submitBtn.disabled = false;
+  if (res.error) {
+    errEl.hidden = false;
+    errEl.textContent = res.error.message;
+    return;
+  }
+  currentProfile.nickname = val;
+  await enterApp();
+});
+document.getElementById('nickname-required-logout').addEventListener('click', async function () {
+  await sb.auth.signOut();
+});
 
 document.getElementById('forgot-form').addEventListener('submit', async function (e) {
   e.preventDefault();
@@ -1484,6 +1523,15 @@ async function loadProfile(userId) {
 }
 
 async function enterApp() {
+  // Nickname is mandatory for everyone: block here — before anything else
+  // renders — until this profile has one. Applies to every sign-in (fresh
+  // login, a restored session, a brand-new signup), not just new accounts,
+  // so an existing member who never set one gets stopped here too.
+  if (currentProfile && !currentProfile.nickname) {
+    appScreen.hidden = true;
+    showNicknameRequiredForm();
+    return; // the form's submit handler calls enterApp() again once saved
+  }
   authScreen.hidden = true;
   appScreen.hidden = false;
   document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
@@ -1497,9 +1545,8 @@ async function enterApp() {
   document.getElementById('admin-reports-btn').hidden = !isAdmin;
   document.getElementById('view-history-btn').hidden = !isAdmin;
 
-  var greetName = (currentProfile && currentProfile.nickname) || (currentUser.email || '').split('@')[0] || '';
+  var greetName = currentProfile.nickname || (currentUser.email || '').split('@')[0] || '';
   document.getElementById('home-greeting').textContent = greetName ? ('Γεια σου, ' + greetName + ' 👋') : 'Καλωσόρισες 👋';
-  document.getElementById('nickname-nudge').hidden = !!(currentProfile && currentProfile.nickname);
 
   // Any category an admin has hidden from this member (add_member_category_restrictions.sql)
   // is dropped from their own dropdown/chips too, so a category that
@@ -2457,7 +2504,6 @@ async function openSettingsModal(focusNickname) {
   }
 }
 document.getElementById('settings-btn').addEventListener('click', function () { openSettingsModal(false); });
-document.getElementById('nickname-nudge-btn').addEventListener('click', function () { openSettingsModal(true); });
 
 async function loadMembersList() {
   var res = await sb.from('profiles').select('id, email, role, nickname, avatar_url, last_seen, created_at').order('created_at');
@@ -2656,14 +2702,17 @@ document.getElementById('avatar-file-input').addEventListener('change', async fu
 
 document.getElementById('nickname-save-btn').addEventListener('click', async function () {
   var val = document.getElementById('nickname-input').value.trim();
-  var res = await sb.from('profiles').update({ nickname: val || null }).eq('id', currentUser.id);
+  // Nicknames are mandatory (see enterApp()'s sign-in gate) — don't let
+  // Settings blank one back out, or the next sign-in would just bounce
+  // this person straight back to the required-nickname screen anyway.
+  if (!val) { alert('Το όνομα δεν μπορεί να μείνει κενό.'); return; }
+  var res = await sb.from('profiles').update({ nickname: val }).eq('id', currentUser.id);
   if (res.error) {
     alert('Αποτυχία αποθήκευσης: ' + res.error.message);
     return;
   }
-  currentProfile.nickname = val || null;
+  currentProfile.nickname = val;
   document.getElementById('user-email').textContent = displayName(currentProfile) || currentUser.email;
-  document.getElementById('nickname-nudge').hidden = !!currentProfile.nickname;
   var btn = document.getElementById('nickname-save-btn');
   var orig = btn.textContent;
   btn.textContent = 'Έγινε!';
@@ -3754,6 +3803,7 @@ if (configured) {
       appScreen.hidden = true;
       authMainWrap.hidden = true;
       forgotWrap.hidden = true;
+      nicknameRequiredWrap.hidden = true;
       recoveryWrap.hidden = false;
       return;
     }
