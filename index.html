@@ -814,6 +814,12 @@
         <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
 
+      <button class="profile-row" id="view-history-btn" type="button" hidden>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="prow-label">Ιστορικό προβολών</span>
+        <svg class="prow-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
       <button class="profile-row danger" id="logout-btn" type="button">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         <span class="prow-label">Αποσύνδεση</span>
@@ -1107,6 +1113,34 @@
       <button class="modal-close" id="reports-modal-close">&times;</button>
     </div>
     <div id="reports-list"></div>
+  </div>
+</div>
+
+<!-- ==================== ADMIN: VIEW HISTORY MODAL (who viewed what) ==================== -->
+<div class="modal-overlay" id="view-history-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ιστορικό προβολών</h2>
+      <button class="modal-close" id="view-history-modal-close">&times;</button>
+    </div>
+    <input type="text" id="view-history-search" class="cat-select" style="width:100%;box-sizing:border-box;margin-bottom:12px;" placeholder="Αναζήτηση με όνομα ή συνταγή...">
+    <div id="view-history-list"></div>
+  </div>
+</div>
+
+<!-- ==================== ADMIN: MEMBER CATEGORY VISIBILITY MODAL ==================== -->
+<div class="modal-overlay" id="category-visibility-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="category-visibility-title">Ορατές κατηγορίες</h2>
+      <button class="modal-close" id="category-visibility-modal-close">&times;</button>
+    </div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Ξεσημείωσε μια κατηγορία για να την κρύψεις από αυτό το μέλος. Όλες είναι ορατές από προεπιλογή.</div>
+    <div id="category-visibility-list"></div>
+    <div class="form-actions" style="margin-top:14px;">
+      <button type="button" class="btn-secondary" id="category-visibility-cancel">Άκυρο</button>
+      <button type="button" class="btn-inline-primary" id="category-visibility-save">Αποθήκευση</button>
+    </div>
   </div>
 </div>
 
@@ -1447,17 +1481,31 @@ async function enterApp() {
   badge.className = 'role-badge ' + (isAdmin ? 'admin' : 'member');
   document.getElementById('admin-stats').hidden = !isAdmin;
   document.getElementById('admin-reports-btn').hidden = !isAdmin;
+  document.getElementById('view-history-btn').hidden = !isAdmin;
 
   var greetName = (currentProfile && currentProfile.nickname) || (currentUser.email || '').split('@')[0] || '';
   document.getElementById('home-greeting').textContent = greetName ? ('Γεια σου, ' + greetName + ' 👋') : 'Καλωσόρισες 👋';
   document.getElementById('nickname-nudge').hidden = !!(currentProfile && currentProfile.nickname);
 
+  // Any category an admin has hidden from this member (add_member_category_restrictions.sql)
+  // is dropped from their own dropdown/chips too, so a category that
+  // always returns zero results doesn't sit there looking broken. Admins
+  // always see the full list, regardless of any stray restriction rows.
+  var visibleCategories = CATEGORY_ORDER;
+  if (!isAdmin) {
+    var restrictRes = await sb.from('member_category_restrictions').select('category').eq('user_id', currentUser.id);
+    if (!restrictRes.error && restrictRes.data && restrictRes.data.length) {
+      var hiddenCats = new Set(restrictRes.data.map(function (r) { return r.category; }));
+      visibleCategories = CATEGORY_ORDER.filter(function (c) { return !hiddenCats.has(c); });
+    }
+  }
+
   var catSel = document.getElementById('cat-select');
   catSel.innerHTML = '<option value="">Όλες οι κατηγορίες</option>' +
-    CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+    visibleCategories.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
   var fCat = document.getElementById('f-category');
-  fCat.innerHTML = CATEGORY_ORDER.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
-  document.getElementById('cat-scroller').innerHTML = CATEGORY_ORDER.map(function (c) {
+  fCat.innerHTML = visibleCategories.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  document.getElementById('cat-scroller').innerHTML = visibleCategories.map(function (c) {
     return '<button type="button" class="cat-chip" data-cat="' + c + '">' + c + '</button>';
   }).join('');
 
@@ -1768,10 +1816,21 @@ function updateRvWatermark() {
   var label = displayName(currentProfile) || (currentUser && currentUser.email) || '';
   wm.style.backgroundImage = buildWatermarkTile(label);
 }
+/* Fire-and-forget: logs that the current user opened this recipe, for the
+   admin's "Ιστορικό προβολών" screen (add_recipe_views.sql). Never blocks
+   the UI on this — a failure here (e.g. the SQL migration not run yet)
+   should not stop someone from reading a recipe. */
+function logRecipeView(recipeId) {
+  if (!currentUser || !recipeId) return;
+  sb.from('recipe_views').insert({ recipe_id: recipeId, user_id: currentUser.id }).then(function (res) {
+    if (res && res.error) console.error('logRecipeView failed', res.error);
+  });
+}
 function openRecipeView(r) {
   if (!r) return;
   currentViewedRecipe = r;
   recordRecentView(r.id);
+  logRecipeView(r.id);
   updateRvWatermark();
   rvOriginal = {
     name: r.recipe_name,
@@ -2392,15 +2451,21 @@ async function loadMembersList() {
     var removePhotoBtn = (m.avatar_url && m.id !== currentUser.id)
       ? '<button data-action="remove-avatar" data-id="' + m.id + '" class="btn-secondary" style="font-size:10.5px;padding:4px 8px;margin-left:8px;">Αφαίρεση φωτό</button>'
       : '';
+    // Only members (not other admins) can have categories hidden from them.
+    var visibilityBtn = m.role !== 'admin'
+      ? '<button data-action="edit-visibility" data-id="' + m.id + '" data-name="' + escapeHtml(displayName(m)) + '" class="btn-secondary" style="font-size:10.5px;padding:4px 8px;margin-left:8px;" title="Ποιες κατηγορίες βλέπει">Ορατότητα</button>'
+      : '';
     return '<div class="member-row"><span class="msg-avatar-tap" data-user-id="' + m.id + '" style="display:flex;align-items:center;gap:8px;">' + avatarHtml(m, 22) +
       (online ? '<span class="chat-online"><span class="dot"></span></span>' : '') +
       escapeHtml(displayName(m)) + '</span><span style="display:flex;align-items:center;">' +
-      '<span class="role-badge ' + m.role + '">' + m.role + '</span>' + removePhotoBtn + '</span></div>';
+      '<span class="role-badge ' + m.role + '">' + m.role + '</span>' + removePhotoBtn + visibilityBtn + '</span></div>';
   }).join('');
 }
 document.getElementById('members-list').addEventListener('click', async function (e) {
   var who = e.target.closest('.msg-avatar-tap');
   if (who) { openPersonProfile(who.getAttribute('data-user-id')); return; }
+  var visBtn = e.target.closest('button[data-action="edit-visibility"]');
+  if (visBtn) { await openCategoryVisibilityModal(visBtn.getAttribute('data-id'), visBtn.getAttribute('data-name')); return; }
   var btn = e.target.closest('button[data-action="remove-avatar"]');
   if (!btn) return;
   if (!confirm('Αφαίρεση της φωτογραφίας αυτού του χρήστη;')) return;
@@ -2408,6 +2473,105 @@ document.getElementById('members-list').addEventListener('click', async function
   if (res.error) { alert('Αποτυχία: ' + res.error.message); return; }
   await loadMembersList();
 });
+
+/* ---------- Admin: per-member category visibility ---------- */
+var categoryVisibilityMemberId = null;
+async function openCategoryVisibilityModal(memberId, memberName) {
+  categoryVisibilityMemberId = memberId;
+  document.getElementById('category-visibility-title').textContent = 'Ορατές κατηγορίες — ' + memberName;
+  var res = await sb.from('member_category_restrictions').select('category').eq('user_id', memberId);
+  if (res.error) { alert('Αποτυχία φόρτωσης: ' + res.error.message); return; }
+  var hidden = new Set((res.data || []).map(function (r) { return r.category; }));
+  document.getElementById('category-visibility-list').innerHTML = CATEGORY_ORDER.map(function (c) {
+    return rowHtml(c, !hidden.has(c), c);
+  }).join('');
+  document.getElementById('category-visibility-modal').classList.add('visible');
+}
+function closeCategoryVisibilityModal() {
+  document.getElementById('category-visibility-modal').classList.remove('visible');
+  categoryVisibilityMemberId = null;
+}
+document.getElementById('category-visibility-modal-close').addEventListener('click', closeCategoryVisibilityModal);
+document.getElementById('category-visibility-cancel').addEventListener('click', closeCategoryVisibilityModal);
+document.getElementById('category-visibility-modal').addEventListener('click', function (e) { if (e.target === this) closeCategoryVisibilityModal(); });
+document.getElementById('category-visibility-save').addEventListener('click', async function () {
+  if (!categoryVisibilityMemberId) return;
+  var saveBtn = this;
+  saveBtn.disabled = true;
+  var checkboxes = document.querySelectorAll('#category-visibility-list input[type="checkbox"]');
+  var toHide = [], toShow = [];
+  checkboxes.forEach(function (cb) {
+    var cat = cb.getAttribute('data-id');
+    if (cb.checked) toShow.push(cat); else toHide.push(cat);
+  });
+  var memberId = categoryVisibilityMemberId;
+  var errors = [];
+  if (toHide.length) {
+    // upsert (not insert): a plain bulk insert where ANY row in the batch
+    // hits the (user_id, category) primary key fails the WHOLE statement
+    // in Postgres, not just that row — so re-saving with an already-hidden
+    // category still checked would silently drop every other newly-hidden
+    // category in the same save. upsert makes each row idempotent instead.
+    var insRes = await sb.from('member_category_restrictions').upsert(
+      toHide.map(function (c) { return { user_id: memberId, category: c }; }),
+      { onConflict: 'user_id,category' }
+    );
+    if (insRes.error) errors.push(insRes.error.message);
+  }
+  if (toShow.length) {
+    var delRes = await sb.from('member_category_restrictions').delete().eq('user_id', memberId).in('category', toShow);
+    if (delRes.error) errors.push(delRes.error.message);
+  }
+  saveBtn.disabled = false;
+  if (errors.length) {
+    alert('Κάποιες αλλαγές απέτυχαν: ' + errors.join(' / ') + (errors.some(function (e) { return /does not exist/.test(e); }) ? '\n\nΈχεις τρέξει το add_member_category_restrictions.sql στο Supabase;' : ''));
+    return;
+  }
+  closeCategoryVisibilityModal();
+});
+
+/* ---------- Admin: view-history log (who viewed what) ---------- */
+async function renderViewHistoryList(filterText) {
+  var res = await sb.from('recipe_views')
+    .select('*, profiles(nickname, email), recipes(recipe_name, category)')
+    .order('viewed_at', { ascending: false })
+    .range(0, 299);
+  var listEl = document.getElementById('view-history-list');
+  if (res.error) {
+    listEl.innerHTML = '<div style="color:var(--ink-soft);font-size:13px;padding:14px 0;">Αποτυχία φόρτωσης' +
+      (/does not exist/.test(res.error.message) ? ' — έχεις τρέξει το add_recipe_views.sql στο Supabase;' : (': ' + res.error.message)) + '</div>';
+    return;
+  }
+  var rows = res.data || [];
+  var q = (filterText || '').trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(function (v) {
+      var who = (v.profiles && (v.profiles.nickname || v.profiles.email)) || '';
+      var what = (v.recipes && v.recipes.recipe_name) || '';
+      return who.toLowerCase().indexOf(q) !== -1 || what.toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="color:var(--ink-soft);font-size:13px;padding:14px 0;">Καμία προβολή ακόμα.</div>';
+    return;
+  }
+  listEl.innerHTML = rows.map(function (v) {
+    var who = v.profiles ? escapeHtml(v.profiles.nickname || (v.profiles.email || '').split('@')[0]) : '—';
+    var what = v.recipes ? escapeHtml(v.recipes.recipe_name) : '(διαγραμμένη συνταγή)';
+    var when = new Date(v.viewed_at).toLocaleString('el-GR');
+    return '<div style="border-bottom:1px solid var(--tile-2);padding:10px 0;font-size:12.5px;">' +
+      '<span style="font-weight:600;">' + who + '</span> είδε <span>' + what + '</span>' +
+      '<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">' + when + '</div></div>';
+  }).join('');
+}
+document.getElementById('view-history-btn').addEventListener('click', async function () {
+  document.getElementById('view-history-search').value = '';
+  await renderViewHistoryList('');
+  document.getElementById('view-history-modal').classList.add('visible');
+});
+document.getElementById('view-history-modal-close').addEventListener('click', function () { document.getElementById('view-history-modal').classList.remove('visible'); });
+document.getElementById('view-history-modal').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
+document.getElementById('view-history-search').addEventListener('input', function () { renderViewHistoryList(this.value); });
 
 document.getElementById('avatar-upload-btn').addEventListener('click', function () {
   document.getElementById('avatar-file-input').click();
