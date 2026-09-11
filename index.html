@@ -385,6 +385,17 @@
   .rv-section { margin-bottom: 28px; }
   .rv-section .ingredients { font-size: 14px; }
   .rv-section .method-text { font-size: 14.5px; }
+  /* Screenshot deterrent: a faint, repeating watermark of the viewer's own
+     name/email tiled diagonally across the recipe screen. It cannot block
+     or detect an actual screenshot (no website/PWA can, on iOS or Android —
+     that's an OS-level capability browsers don't expose), but it means any
+     screenshot that does get taken/shared carries whose account it came
+     from. Hidden entirely for admins (set from JS in openRecipeView()).
+     z-index 1 keeps it under .rv-topbar (2) so the topbar stays clean. */
+  .rv-watermark {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    opacity: .09; background-repeat: repeat;
+  }
 
   /* ---------- List detail (full screen) — same z-index reasoning as
      #recipe-view-screen above (240, below bottom nav's 250). Uses its own
@@ -841,6 +852,7 @@
 
 <!-- ==================== RECIPE DETAIL (full screen) ==================== -->
 <div id="recipe-view-screen" hidden>
+  <div id="rv-watermark" class="rv-watermark" aria-hidden="true"></div>
   <div class="rv-topbar">
     <button id="rv-back" class="rv-back-btn">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -1734,10 +1746,33 @@ document.getElementById('recipe-list').addEventListener('click', async function 
 /* ---------- Full-screen recipe view ---------- */
 var recipeViewScreen = document.getElementById('recipe-view-screen');
 var rvOriginal = null;
+/* Builds a repeating-tile SVG (as a data: URI, for use as a CSS
+   background-image) with the given text drawn diagonally — the watermark
+   pattern used on the recipe screen. */
+function buildWatermarkTile(text) {
+  var t = String(text || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="280" height="190">' +
+    '<text x="140" y="100" transform="rotate(-28 140 100)" font-family="IBM Plex Mono, monospace" ' +
+    'font-size="13" fill="#ffffff" text-anchor="middle">' + t + '</text></svg>';
+  return 'url("data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) + '")';
+}
+function updateRvWatermark() {
+  var wm = document.getElementById('rv-watermark');
+  if (!wm) return;
+  var isAdmin = currentProfile && currentProfile.role === 'admin';
+  if (isAdmin) {
+    wm.style.backgroundImage = 'none';
+    return;
+  }
+  var label = displayName(currentProfile) || (currentUser && currentUser.email) || '';
+  wm.style.backgroundImage = buildWatermarkTile(label);
+}
 function openRecipeView(r) {
   if (!r) return;
   currentViewedRecipe = r;
   recordRecentView(r.id);
+  updateRvWatermark();
   rvOriginal = {
     name: r.recipe_name,
     ingredients: (r.ingredients || []).slice(),
